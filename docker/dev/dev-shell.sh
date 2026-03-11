@@ -45,8 +45,7 @@ run() {
 }
 
 if [[ $# -eq 0 ]]; then
-  usage
-  exit 0
+  run
 fi
 
 cmd="$1"
