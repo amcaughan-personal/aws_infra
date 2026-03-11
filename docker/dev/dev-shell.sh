@@ -46,6 +46,7 @@ run() {
 
 if [[ $# -eq 0 ]]; then
   run
+  exit 0
 fi
 
 cmd="$1"
