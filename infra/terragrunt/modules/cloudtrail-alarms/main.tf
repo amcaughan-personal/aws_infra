@@ -142,7 +142,7 @@ resource "aws_cloudwatch_metric_alarm" "access_key_created" {
   alarm_actions = [var.sns_topic_arn]
 }
 
-# Network exposure changes are high-signal in a small personal account
+# Network exposure changes
 resource "aws_cloudwatch_log_metric_filter" "security_group_ingress_change" {
   name           = "SecurityGroupIngressChange"
   log_group_name = var.log_group_name
