@@ -30,6 +30,7 @@ inputs = {
   log_group_name = dependency.cloudtrail.outputs.log_group_name
   sns_topic_arn  = dependency.alerts_sns.outputs.topic_arn
 
-  period_seconds = 300
-  eval_periods   = 1
+  period_seconds                  = 300
+  eval_periods                    = 1
+  console_login_failure_threshold = 5
 }
