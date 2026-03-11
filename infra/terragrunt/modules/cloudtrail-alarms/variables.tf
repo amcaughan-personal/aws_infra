@@ -15,3 +15,8 @@ variable "eval_periods" {
   type    = number
   default = 1
 }
+
+variable "console_login_failure_threshold" {
+  type    = number
+  default = 5
+}
