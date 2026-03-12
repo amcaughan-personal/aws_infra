@@ -29,5 +29,8 @@ inputs = {
   # Keep only the shared endpoints that current internal projects actually need.
   enable_execute_api     = true
   enable_s3_gateway      = true
+  # Uncomment if I ever want the shared endpoint layer to be disposable too.
+  # auto_cleanup_enabled = true
+  # cleanup_schedule    = "daily"
   ssm_prefix             = "/network/dev/endpoints"
 }

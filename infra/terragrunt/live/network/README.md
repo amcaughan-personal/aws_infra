@@ -18,6 +18,7 @@ Intent:
 Current shared endpoint bundle:
 - `execute-api` interface endpoint for private API Gateway access
 - `s3` gateway endpoint for private subnet access to S3 without NAT
+- optional cleanup tagging if I decide the shared endpoint layer should be disposable too
 
 Current test host stack:
 - one `t3.nano` Amazon Linux instance in the shared private subnet

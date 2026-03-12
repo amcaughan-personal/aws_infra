@@ -1,11 +1,30 @@
 data "aws_region" "current" {}
 
+resource "time_static" "created_on" {
+  count = var.auto_cleanup_enabled ? 1 : 0
+}
+
+locals {
+  cleanup_tags = var.auto_cleanup_enabled ? {
+    (var.cleanup_tag_name)          = "true"
+    (var.cleanup_schedule_tag_name) = var.cleanup_schedule
+    (var.created_on_tag_name)       = formatdate("YYYY-MM-DD", time_static.created_on[0].rfc3339)
+  } : {}
+}
+
 resource "aws_security_group" "interface_endpoints" {
   count = var.enable_execute_api ? 1 : 0
 
   name        = "${var.name_prefix}-interface-endpoints"
   description = "Shared security group for private interface VPC endpoints"
   vpc_id      = var.vpc_id
+
+  tags = merge(
+    local.cleanup_tags,
+    {
+      Name = "${var.name_prefix}-interface-endpoints"
+    },
+  )
 
   ingress {
     description = "Allow HTTPS from inside the shared dev VPC"
@@ -34,6 +53,13 @@ resource "aws_vpc_endpoint" "execute_api" {
   subnet_ids          = var.private_subnet_ids
   security_group_ids  = [aws_security_group.interface_endpoints[0].id]
   private_dns_enabled = true
+
+  tags = merge(
+    local.cleanup_tags,
+    {
+      Name = "${var.name_prefix}-execute-api"
+    },
+  )
 }
 
 resource "aws_vpc_endpoint" "s3_gateway" {
@@ -43,6 +69,13 @@ resource "aws_vpc_endpoint" "s3_gateway" {
   service_name      = "com.amazonaws.${data.aws_region.current.region}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = var.private_route_table_ids
+
+  tags = merge(
+    local.cleanup_tags,
+    {
+      Name = "${var.name_prefix}-s3-gateway"
+    },
+  )
 }
 
 resource "aws_ssm_parameter" "execute_api_vpce_id" {
