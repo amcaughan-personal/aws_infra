@@ -32,6 +32,8 @@ Usage
 
 This repo is applied manually via Terragrunt. CI is limited to static analysis and security scanning.
 
+Local tooling lives under `local/`.
+
 Shared dev network stacks live under `infra/terragrunt/live/network/dev`:
 - `vpc`
   cheap shared foundation intended to stay up
