@@ -26,6 +26,11 @@ Intent:
 
 Current shared endpoint bundle:
 - `execute-api` interface endpoint for private API Gateway access
+- `ecr.api` and `ecr.dkr` interface endpoints for private ECS image pulls
+- `logs` interface endpoint for private ECS and Firehose logging
+- `ssm` interface endpoint for private runtime configuration lookups
+- `athena` and `glue` interface endpoints for private ELT query and catalog access
+- `kinesis-streams` interface endpoint for private streaming workflow emission
 - `s3` gateway endpoint for private subnet access to S3 without NAT
 - weekly cleanup tagging so the janitor can remove the costly endpoint layer if I forget
 
@@ -54,3 +59,7 @@ Prod uses the same flow:
 If `live/automation/cleanup-janitor` is applied, both test-host stacks tag their EC2 instance, Session Manager VPC endpoints, and helper security groups for daily cleanup.
 
 Cross-repo consumers should read shared network identifiers from SSM Parameter Store or repo outputs rather than duplicating the VPC in each project repository.
+
+Foundational shared VPC resources are intentionally not tagged for janitor cleanup.
+The janitor tags are reserved for disposable high-cost layers like endpoint bundles
+and test hosts.

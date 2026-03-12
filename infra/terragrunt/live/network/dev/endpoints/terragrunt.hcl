@@ -26,10 +26,17 @@ inputs = {
   vpc_cidr                = dependency.vpc.outputs.vpc_cidr
   private_subnet_ids      = dependency.vpc.outputs.private_subnet_ids
   private_route_table_ids = dependency.vpc.outputs.private_route_table_ids
-  # Keep only the shared endpoints that current internal projects actually need.
-  enable_execute_api   = true
-  enable_s3_gateway    = true
-  auto_cleanup_enabled = true
-  cleanup_schedule     = "weekly"
-  ssm_prefix           = "/network/dev/endpoints"
+  # Private ECS workloads need more than the API endpoint once ELT jobs live in the VPC.
+  enable_execute_api      = true
+  enable_ecr_api          = true
+  enable_ecr_dkr          = true
+  enable_logs             = true
+  enable_ssm              = true
+  enable_athena           = true
+  enable_glue             = true
+  enable_kinesis_streams  = true
+  enable_s3_gateway       = true
+  auto_cleanup_enabled    = true
+  cleanup_schedule        = "weekly"
+  ssm_prefix              = "/network/dev/endpoints"
 }
