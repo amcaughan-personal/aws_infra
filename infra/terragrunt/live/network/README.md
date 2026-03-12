@@ -9,16 +9,22 @@ Layout:
   shared endpoint bundle for private service access
 - `dev/test-host`
   tiny SSM-managed EC2 instance for testing private connectivity from inside the VPC
+- `prod/vpc`
+  shared low-cost VPC foundation for production-scoped internal services
+- `prod/endpoints`
+  shared endpoint bundle for production-scoped private service access
 
 Intent:
 - keep `dev/vpc` up most of the time
 - create/destroy `dev/endpoints` when private connectivity is actually needed, for cost reasons ($7 a month is too rich for my blood lol)
 - create/destroy `dev/test-host` only when I actually need an in-VPC shell for DNS, curl, or debugging
+- keep `prod/vpc` up when I want a real prod-scoped network boundary
+- let the janitor sweep both `dev/endpoints` and `prod/endpoints` weekly so I do not forget and pay for idle interface endpoints
 
 Current shared endpoint bundle:
 - `execute-api` interface endpoint for private API Gateway access
 - `s3` gateway endpoint for private subnet access to S3 without NAT
-- optional cleanup tagging if I decide the shared endpoint layer should be disposable too
+- weekly cleanup tagging so the janitor can remove the costly endpoint layer if I forget
 
 Current test host stack:
 - one `t3.nano` Amazon Linux instance in the shared private subnet
