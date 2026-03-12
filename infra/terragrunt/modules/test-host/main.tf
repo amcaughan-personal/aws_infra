@@ -4,6 +4,18 @@ data "aws_ssm_parameter" "al2023_ami" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
 
+resource "time_static" "created_on" {
+  count = var.auto_cleanup_enabled ? 1 : 0
+}
+
+locals {
+  cleanup_tags = var.auto_cleanup_enabled ? {
+    (var.cleanup_tag_name)          = "true"
+    (var.cleanup_schedule_tag_name) = var.cleanup_schedule
+    (var.created_on_tag_name)       = formatdate("YYYY-MM-DD", time_static.created_on[0].rfc3339)
+  } : {}
+}
+
 data "aws_iam_policy_document" "ec2_assume_role" {
   statement {
     effect = "Allow"
@@ -37,6 +49,13 @@ resource "aws_security_group" "host" {
   description = "No-ingress security group for the dev network test host"
   vpc_id      = var.vpc_id
 
+  tags = merge(
+    local.cleanup_tags,
+    {
+      Name = "${var.name_prefix}-host"
+    },
+  )
+
   egress {
     description      = "Allow the test host to reach VPC endpoints and other outbound targets"
     from_port        = 0
@@ -51,6 +70,13 @@ resource "aws_security_group" "session_manager_endpoints" {
   name        = "${var.name_prefix}-session-manager-endpoints"
   description = "Allow HTTPS from inside the shared dev VPC to Session Manager endpoints"
   vpc_id      = var.vpc_id
+
+  tags = merge(
+    local.cleanup_tags,
+    {
+      Name = "${var.name_prefix}-session-manager-endpoints"
+    },
+  )
 
   ingress {
     description = "Allow HTTPS from inside the shared dev VPC"
@@ -77,6 +103,13 @@ resource "aws_vpc_endpoint" "ssm" {
   subnet_ids          = [var.subnet_id]
   security_group_ids  = [aws_security_group.session_manager_endpoints.id]
   private_dns_enabled = true
+
+  tags = merge(
+    local.cleanup_tags,
+    {
+      Name = "${var.name_prefix}-ssm"
+    },
+  )
 }
 
 resource "aws_vpc_endpoint" "ssmmessages" {
@@ -86,6 +119,13 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   subnet_ids          = [var.subnet_id]
   security_group_ids  = [aws_security_group.session_manager_endpoints.id]
   private_dns_enabled = true
+
+  tags = merge(
+    local.cleanup_tags,
+    {
+      Name = "${var.name_prefix}-ssmmessages"
+    },
+  )
 }
 
 resource "aws_vpc_endpoint" "ec2messages" {
@@ -95,6 +135,13 @@ resource "aws_vpc_endpoint" "ec2messages" {
   subnet_ids          = [var.subnet_id]
   security_group_ids  = [aws_security_group.session_manager_endpoints.id]
   private_dns_enabled = true
+
+  tags = merge(
+    local.cleanup_tags,
+    {
+      Name = "${var.name_prefix}-ec2messages"
+    },
+  )
 }
 
 resource "aws_instance" "this" {
@@ -117,9 +164,12 @@ resource "aws_instance" "this" {
     encrypted = true
   }
 
-  tags = {
-    Name = var.name_prefix
-  }
+  tags = merge(
+    local.cleanup_tags,
+    {
+      Name = var.name_prefix
+    },
+  )
 
   depends_on = [
     aws_vpc_endpoint.ssm,

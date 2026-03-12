@@ -23,6 +23,7 @@ Current test host stack:
 - one `t3.nano` Amazon Linux instance in the shared private subnet
 - no SSH or public IP
 - SSM Session Manager access through dedicated `ssm`, `ssmmessages`, and `ec2messages` interface endpoints in the same stack
+- opt-in cleanup tags so the janitor can remove the costly pieces if I forget
 
 Quick loop:
 - `cd infra/terragrunt/live/network/dev/test-host`
@@ -31,5 +32,7 @@ Quick loop:
 - run the returned `aws ssm start-session ...` command
 - `exit` when done
 - `terragrunt destroy` when I no longer need the box
+
+If `live/automation/cleanup-janitor` is applied, the test host's EC2 instance, Session Manager VPC endpoints, and helper security groups are tagged for daily cleanup.
 
 Cross-repo consumers should read shared network identifiers from SSM Parameter Store or repo outputs rather than duplicating the VPC in each project repository.

@@ -20,6 +20,8 @@ terraform {
 }
 
 inputs = {
+  auto_cleanup_enabled = true
+  cleanup_schedule    = "daily"
   instance_type = "t3.nano"
   name_prefix   = "dev-network-test-host"
   ssm_prefix    = "/network/dev/test-host"
