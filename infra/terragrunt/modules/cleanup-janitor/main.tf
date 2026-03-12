@@ -103,7 +103,7 @@ data "archive_file" "lambda_zip" {
   source {
     content = templatefile("${path.module}/lambda.py.tftpl", {
       accepted_cleanup_tag_names = jsonencode(local.accepted_cleanup_tag_names)
-      cleanup_schedule_tag_name = var.cleanup_schedule_tag_name
+      cleanup_schedule_tag_name  = var.cleanup_schedule_tag_name
       cleanup_tag_name          = var.cleanup_tag_name
       created_on_tag_name       = var.created_on_tag_name
       monthly_cleanup_day       = var.monthly_cleanup_day
