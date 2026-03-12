@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     ca-certificates \
+    sudo \
   && rm -rf /var/lib/apt/lists/*
 
 # Non-root user
