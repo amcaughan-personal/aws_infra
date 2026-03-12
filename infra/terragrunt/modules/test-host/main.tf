@@ -149,6 +149,7 @@ resource "aws_instance" "this" {
   instance_type        = var.instance_type
   iam_instance_profile = aws_iam_instance_profile.this.name
   subnet_id            = var.subnet_id
+  ebs_optimized        = true
   vpc_security_group_ids = [
     aws_security_group.host.id,
   ]

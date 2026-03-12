@@ -11,14 +11,11 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     unzip \
-    sudo \
     ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 # Non-root user
-RUN useradd -ms /bin/bash dev \
-  && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev \
-  && chmod 0440 /etc/sudoers.d/dev
+RUN useradd -ms /bin/bash dev
 
 # AWS CLI
 RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip \
