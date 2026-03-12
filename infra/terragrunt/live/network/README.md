@@ -10,7 +10,7 @@ Layout:
 
 Intent:
 - keep `dev/vpc` up most of the time
-- create/destroy `dev/endpoints` when private connectivity is actually needed
+- create/destroy `dev/endpoints` when private connectivity is actually needed, for cost reasons ($7 a month is too rich for my blood lol)
 
 Current shared endpoint bundle:
 - `execute-api` interface endpoint for private API Gateway access
