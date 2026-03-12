@@ -11,18 +11,26 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     unzip \
+    sudo \
     ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 # Non-root user
 RUN useradd -ms /bin/bash dev \
-  && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev
+  && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev \
+  && chmod 0440 /etc/sudoers.d/dev
 
 # AWS CLI
 RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip \
   && unzip /tmp/awscliv2.zip -d /tmp \
   && /tmp/aws/install \
   && rm -rf /tmp/aws /tmp/awscliv2.zip
+
+# Session Manager plugin
+RUN curl -fsSL "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" \
+    -o /tmp/session-manager-plugin.deb \
+  && dpkg -i /tmp/session-manager-plugin.deb \
+  && rm -f /tmp/session-manager-plugin.deb
 
 # Terraform
 RUN curl -fsSL "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \
