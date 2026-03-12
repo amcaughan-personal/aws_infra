@@ -31,6 +31,6 @@ inputs = {
   enable_s3_gateway      = true
   # Uncomment if I ever want the shared endpoint layer to be disposable too.
   # auto_cleanup_enabled = true
-  # cleanup_schedule    = "daily"
+  # cleanup_schedule    = "weekly"
   ssm_prefix             = "/network/dev/endpoints"
 }
