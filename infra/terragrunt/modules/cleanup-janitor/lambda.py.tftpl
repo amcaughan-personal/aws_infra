@@ -1,0 +1,173 @@
+import datetime
+import json
+
+import boto3
+from botocore.exceptions import ClientError
+
+ec2 = boto3.client("ec2")
+tagging = boto3.client("resourcegroupstaggingapi")
+
+AUTO_CLEANUP_TAG = "${cleanup_tag_name}"
+CLEANUP_SCHEDULE_TAG = "${cleanup_schedule_tag_name}"
+CREATED_ON_TAG = "${created_on_tag_name}"
+WEEKLY_CLEANUP_WEEKDAY = "${weekly_cleanup_weekday}"
+MONTHLY_CLEANUP_DAY = ${monthly_cleanup_day}
+
+SUPPORTED_RESOURCE_TYPES = (
+    "ec2:instance",
+    "ec2:security-group",
+    "ec2:vpc-endpoint",
+)
+
+WEEKDAY_INDEX = {
+    "mon": 0,
+    "tue": 1,
+    "wed": 2,
+    "thu": 3,
+    "fri": 4,
+    "sat": 5,
+    "sun": 6,
+}
+
+
+def _parse_tags(tag_list):
+    return {item["Key"]: item["Value"] for item in tag_list}
+
+
+def _resource_type(resource_arn):
+    resource_id = resource_arn.split(":", 5)[5]
+    if resource_id.startswith("instance/"):
+        return "ec2:instance"
+    if resource_id.startswith("security-group/"):
+        return "ec2:security-group"
+    if resource_id.startswith("vpc-endpoint/"):
+        return "ec2:vpc-endpoint"
+    return None
+
+
+def _resource_id(resource_arn):
+    return resource_arn.rsplit("/", 1)[-1]
+
+
+def _is_auto_cleanup_enabled(tags):
+    return tags.get(AUTO_CLEANUP_TAG, "").strip().lower() == "true"
+
+
+def _parse_created_on(raw_value):
+    return datetime.date.fromisoformat(raw_value)
+
+
+def _should_cleanup(tags, today):
+    if not _is_auto_cleanup_enabled(tags):
+        return False, "auto_cleanup_disabled"
+
+    cleanup_schedule = tags.get(CLEANUP_SCHEDULE_TAG, "").strip().lower()
+    if cleanup_schedule not in {"daily", "weekly", "monthly"}:
+        return False, "invalid_cleanup_schedule"
+
+    created_on_raw = tags.get(CREATED_ON_TAG)
+    if not created_on_raw:
+        return False, "missing_created_on"
+
+    try:
+        created_on = _parse_created_on(created_on_raw)
+    except ValueError:
+        return False, "invalid_created_on"
+
+    age_days = (today - created_on).days
+    if age_days < 0:
+        return False, "created_on_in_future"
+
+    if cleanup_schedule == "daily":
+        return age_days >= 1, "daily_not_due_yet"
+
+    if cleanup_schedule == "weekly":
+        is_due = age_days >= 7 and today.weekday() == WEEKDAY_INDEX[WEEKLY_CLEANUP_WEEKDAY]
+        return is_due, "weekly_not_due_yet"
+
+    is_due = age_days >= 28 and today.day == MONTHLY_CLEANUP_DAY
+    return is_due, "monthly_not_due_yet"
+
+
+def _list_tagged_resources():
+    paginator = tagging.get_paginator("get_resources")
+    for page in paginator.paginate(
+        ResourceTypeFilters=list(SUPPORTED_RESOURCE_TYPES),
+        TagFilters=[{"Key": AUTO_CLEANUP_TAG, "Values": ["true"]}],
+    ):
+        for resource in page.get("ResourceTagMappingList", []):
+            yield resource
+
+
+def _delete_vpc_endpoints(endpoint_ids):
+    if not endpoint_ids:
+        return {"deleted": []}
+
+    ec2.delete_vpc_endpoints(VpcEndpointIds=endpoint_ids)
+    return {"deleted": endpoint_ids}
+
+
+def _terminate_instances(instance_ids):
+    if not instance_ids:
+        return {"terminated": []}
+
+    ec2.terminate_instances(InstanceIds=instance_ids)
+    return {"terminated": instance_ids}
+
+
+def _delete_security_groups(group_ids):
+    deleted = []
+    failed = []
+
+    for group_id in group_ids:
+        try:
+            ec2.delete_security_group(GroupId=group_id)
+            deleted.append(group_id)
+        except ClientError as exc:
+            failed.append({"resource_id": group_id, "error": str(exc)})
+
+    return {"deleted": deleted, "failed": failed}
+
+
+def handler(event, context):
+    del event, context
+
+    today = datetime.datetime.now(datetime.UTC).date()
+    eligible = {resource_type: [] for resource_type in SUPPORTED_RESOURCE_TYPES}
+    skipped = []
+
+    for resource in _list_tagged_resources():
+        resource_arn = resource["ResourceARN"]
+        resource_type = _resource_type(resource_arn)
+        if resource_type is None:
+            skipped.append({"resource_arn": resource_arn, "reason": "unsupported_resource_type"})
+            continue
+
+        tags = _parse_tags(resource.get("Tags", []))
+        should_cleanup, reason = _should_cleanup(tags, today)
+        if should_cleanup:
+            eligible[resource_type].append(_resource_id(resource_arn))
+        else:
+            skipped.append({"resource_arn": resource_arn, "reason": reason})
+
+    results = {
+        "date": today.isoformat(),
+        "eligible": eligible,
+        "skipped": skipped,
+        "actions": {},
+    }
+
+    try:
+        results["actions"]["delete_vpc_endpoints"] = _delete_vpc_endpoints(eligible["ec2:vpc-endpoint"])
+    except ClientError as exc:
+        results["actions"]["delete_vpc_endpoints"] = {"deleted": [], "failed": str(exc)}
+
+    try:
+        results["actions"]["terminate_instances"] = _terminate_instances(eligible["ec2:instance"])
+    except ClientError as exc:
+        results["actions"]["terminate_instances"] = {"terminated": [], "failed": str(exc)}
+
+    results["actions"]["delete_security_groups"] = _delete_security_groups(eligible["ec2:security-group"])
+
+    print(json.dumps(results, sort_keys=True))
+    return results
