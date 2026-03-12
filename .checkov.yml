@@ -23,8 +23,6 @@ skip-check:
   - CKV2_AWS_5 # The shared workload SG is exported for later use by other repos and is intentionally unattached here
   - CKV2_AWS_34 # Network identifiers in SSM are configuration values, not secrets that warrant SecureString/KMS overhead
   - CKV_AWS_126 # Detailed EC2 monitoring is unnecessary ongoing cost for the ephemeral SSM test host
-  - CKV_AWS_356 # Janitor IAM is already narrowed to tagged EC2 resource ARNs; Checkov still flags the policy shape as overly broad
-  - CKV_AWS_111 # Janitor write actions are bounded by tag-scoped IAM and explicit resource families; more policy contortion is not worth it here
 
 skip-path:
   # skip just this one file, it kills hostile cryptominers so it's strange and triggers "warnings" I want to ignore
