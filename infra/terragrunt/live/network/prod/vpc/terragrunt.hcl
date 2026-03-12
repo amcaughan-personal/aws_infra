@@ -7,8 +7,8 @@ terraform {
 }
 
 inputs = {
-  name_prefix             = "prod-shared"
-  vpc_cidr                = "10.43.0.0/16"
+  name_prefix = "prod-shared"
+  vpc_cidr    = "10.43.0.0/16"
   # Keep prod cost-conscious for now. Expand later if I need multi-AZ behavior testing.
   availability_zone_count = 1
   ssm_prefix              = "/network/prod/vpc"

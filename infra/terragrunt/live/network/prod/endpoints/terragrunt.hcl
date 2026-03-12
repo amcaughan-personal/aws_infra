@@ -6,10 +6,10 @@ dependency "vpc" {
   config_path = "../vpc"
 
   mock_outputs = {
-    vpc_id                           = "vpc-00000000000000000"
-    vpc_cidr                         = "10.43.0.0/16"
-    private_subnet_ids               = ["subnet-00000000000000000"]
-    private_route_table_ids          = ["rtb-00000000000000000"]
+    vpc_id                            = "vpc-00000000000000000"
+    vpc_cidr                          = "10.43.0.0/16"
+    private_subnet_ids                = ["subnet-00000000000000000"]
+    private_route_table_ids           = ["rtb-00000000000000000"]
     shared_workload_security_group_id = "sg-00000000000000000"
   }
 
