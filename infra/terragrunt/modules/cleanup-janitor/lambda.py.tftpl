@@ -1,5 +1,6 @@
 import datetime
 import json
+import re
 
 import boto3
 from botocore.exceptions import ClientError
@@ -42,6 +43,10 @@ def _get_tag_value(tags, aliases):
     return None
 
 
+def _normalize_schedule_value(value):
+    return re.sub(r"[^a-z]", "", value.lower())
+
+
 def _resource_type(resource_arn):
     resource_id = resource_arn.split(":", 5)[5]
     if resource_id.startswith("instance/"):
@@ -77,7 +82,7 @@ def _should_cleanup(tags, today):
         tags,
         [CLEANUP_SCHEDULE_TAG, "cleanup-schedule"],
     )
-    cleanup_schedule = (cleanup_schedule_value or "").strip().lower() or "daily"
+    cleanup_schedule = _normalize_schedule_value((cleanup_schedule_value or "").strip()) or "daily"
     if cleanup_schedule not in {"daily", "weekly", "monthly"}:
         return True, "daily_due_invalid_cleanup_schedule"
 

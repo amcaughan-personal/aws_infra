@@ -20,6 +20,7 @@ The janitor accepts a small explicit set of opt-in tag keys:
 Those same tag keys are used to scope the janitor's IAM permissions, so destructive actions are limited to resources that carry one of the accepted opt-in tags with value `true`.
 
 Default behavior is forgiving:
+- `cleanup_schedule` values are normalized for case and punctuation, so values like `Daily`, `WEEK-LY`, and `month_ly` still work
 - if `cleanup_schedule` is missing or invalid, the janitor treats it as `daily`
 - if `cleanup_schedule` is malformed, the janitor deletes on the next run as a daily cleanup
 - if `created_on` is missing:
