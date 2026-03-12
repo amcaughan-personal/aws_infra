@@ -28,7 +28,7 @@ resource "aws_vpc_endpoint" "execute_api" {
   count = var.enable_execute_api ? 1 : 0
 
   vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.execute-api"
+  service_name        = "com.amazonaws.${data.aws_region.current.region}.execute-api"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = var.private_subnet_ids
   security_group_ids  = [aws_security_group.interface_endpoints[0].id]
@@ -39,7 +39,7 @@ resource "aws_vpc_endpoint" "s3_gateway" {
   count = var.enable_s3_gateway ? 1 : 0
 
   vpc_id            = var.vpc_id
-  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
+  service_name      = "com.amazonaws.${data.aws_region.current.region}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = var.private_route_table_ids
 }
