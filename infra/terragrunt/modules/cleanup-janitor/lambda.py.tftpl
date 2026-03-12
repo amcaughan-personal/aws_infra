@@ -39,7 +39,7 @@ def _normalize_tag_key(tag_key):
     return re.sub(r"[^a-z0-9]", "", tag_key.lower())
 
 
-def _get_tag_value(tags, *aliases):
+def _get_tag_value(tags, aliases):
     normalized_aliases = {_normalize_tag_key(alias) for alias in aliases}
     for key, value in tags.items():
         if _normalize_tag_key(key) in normalized_aliases:
@@ -65,14 +65,7 @@ def _resource_id(resource_arn):
 def _is_auto_cleanup_enabled(tags):
     value = _get_tag_value(
         tags,
-        AUTO_CLEANUP_TAG,
-        "auto-cleanup",
-        "AutoCleanup",
-        "AUTOCLEANUP",
-        "auto_delete",
-        "auto-delete",
-        "AutoDelete",
-        "AUTODELETE",
+        [AUTO_CLEANUP_TAG, "auto-cleanup", "auto-delete"],
     )
     return (value or "").strip().lower() == "true"
 
@@ -87,10 +80,7 @@ def _should_cleanup(tags, today):
 
     cleanup_schedule_value = _get_tag_value(
         tags,
-        CLEANUP_SCHEDULE_TAG,
-        "cleanup-schedule",
-        "CleanupSchedule",
-        "CLEANUPSCHEDULE",
+        [CLEANUP_SCHEDULE_TAG, "cleanup-schedule"],
     )
     cleanup_schedule = (cleanup_schedule_value or "").strip().lower() or "daily"
     if cleanup_schedule not in {"daily", "weekly", "monthly"}:
@@ -98,10 +88,7 @@ def _should_cleanup(tags, today):
 
     created_on_raw = _get_tag_value(
         tags,
-        CREATED_ON_TAG,
-        "created-on",
-        "CreatedOn",
-        "CREATEDON",
+        [CREATED_ON_TAG, "created-on"],
     )
 
     if cleanup_schedule == "daily":
