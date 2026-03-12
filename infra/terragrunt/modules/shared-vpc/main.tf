@@ -18,6 +18,10 @@ resource "aws_vpc" "this" {
   enable_dns_support   = true
 }
 
+resource "aws_default_security_group" "this" {
+  vpc_id = aws_vpc.this.id
+}
+
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.this.id
 }
@@ -44,6 +48,7 @@ resource "aws_security_group" "shared_workloads" {
   vpc_id      = aws_vpc.this.id
 
   egress {
+    description      = "Allow shared dev workloads to initiate outbound traffic"
     from_port        = 0
     to_port          = 0
     protocol         = "-1"

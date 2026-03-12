@@ -19,6 +19,9 @@ skip-check:
   - CKV_AWS_272 # Ensure AWS Lambda function is configured to validate code-signing
   - CKV2_AWS_73 # Ensure AWS SQS uses CMK not AWS default keys for encryption
   - CKV2_AWS_11 # VPC flow logs are optional here and not worth the extra ongoing storage cost for a small dev network
+  - CKV_AWS_382 # Shared dev security groups intentionally allow broad egress to avoid premature SG micromanagement
+  - CKV2_AWS_5 # The shared workload SG is exported for later use by other repos and is intentionally unattached here
+  - CKV2_AWS_34 # Network identifiers in SSM are configuration values, not secrets that warrant SecureString/KMS overhead
 
 skip-path:
   # skip just this one file, it kills hostile cryptominers so it's strange and triggers "warnings" I want to ignore

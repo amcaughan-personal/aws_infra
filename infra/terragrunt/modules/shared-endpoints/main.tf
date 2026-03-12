@@ -16,6 +16,7 @@ resource "aws_security_group" "interface_endpoints" {
   }
 
   egress {
+    description      = "Allow endpoint responses and service-managed outbound traffic"
     from_port        = 0
     to_port          = 0
     protocol         = "-1"
