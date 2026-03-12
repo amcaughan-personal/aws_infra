@@ -3,8 +3,9 @@ set -euo pipefail
 
 IMAGE_NAME="aws-infra-dev"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-DOCKERFILE="$REPO_ROOT/docker/dev/Dockerfile"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DOCKERFILE="$REPO_ROOT/local/Dockerfile"
+BUILD_CONTEXT="$REPO_ROOT/local"
 
 usage() {
   cat <<EOF
@@ -20,11 +21,11 @@ EOF
 }
 
 build() {
-  docker build -f "$DOCKERFILE" -t "$IMAGE_NAME" "$REPO_ROOT"
+  docker build -f "$DOCKERFILE" -t "$IMAGE_NAME" "$BUILD_CONTEXT"
 }
 
 rebuild() {
-  docker build --no-cache -f "$DOCKERFILE" -t "$IMAGE_NAME" "$REPO_ROOT"
+  docker build --no-cache -f "$DOCKERFILE" -t "$IMAGE_NAME" "$BUILD_CONTEXT"
 }
 
 destroy() {

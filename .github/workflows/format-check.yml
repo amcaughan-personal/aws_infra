@@ -3,42 +3,14 @@ name: format-check
 on:
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   formatting:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform (latest)
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: latest
-          terraform_wrapper: false
-
-      - name: Setup Terragrunt
-        shell: bash
-        run: |
-          set -euo pipefail
-          TG_VER="v0.94.0"
-          curl -fsSL "https://github.com/gruntwork-io/terragrunt/releases/download/${TG_VER}/terragrunt_linux_amd64" \
-            -o /usr/local/bin/terragrunt
-          chmod +x /usr/local/bin/terragrunt
-          terragrunt --version
-
-      - name: Terraform fmt check (modules)
-        shell: bash
-        run: |
-          set -euo pipefail
-          terraform fmt -check -recursive infra/terragrunt/modules
-
-      - name: Terragrunt hclfmt check (infra/terragrunt)
-        shell: bash
-        run: |
-          set -euo pipefail
-          terragrunt hcl format --check
+    uses: amcaughan/shared_workflows/.github/workflows/format-check.yml@e864bcd3a1b43226e199fd267133040f643ca8cc
+    with:
+      terraform_modules_dir: infra/terragrunt/modules
+      terragrunt_working_dir: infra/terragrunt
