@@ -14,6 +14,7 @@ Intent:
 
 Current shared endpoint bundle:
 - `execute-api` interface endpoint for private API Gateway access
+- `dev.internal` private hosted zone for readable internal service names
 - `s3` gateway endpoint for private subnet access to S3 without NAT
 
 Cross-repo consumers should read shared network identifiers from SSM Parameter Store or repo outputs rather than duplicating the VPC in each project repository.
