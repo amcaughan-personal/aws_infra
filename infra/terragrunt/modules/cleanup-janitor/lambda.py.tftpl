@@ -1,5 +1,6 @@
 import datetime
 import json
+import re
 
 import boto3
 from botocore.exceptions import ClientError
@@ -34,6 +35,18 @@ def _parse_tags(tag_list):
     return {item["Key"]: item["Value"] for item in tag_list}
 
 
+def _normalize_tag_key(tag_key):
+    return re.sub(r"[^a-z0-9]", "", tag_key.lower())
+
+
+def _get_tag_value(tags, *aliases):
+    normalized_aliases = {_normalize_tag_key(alias) for alias in aliases}
+    for key, value in tags.items():
+        if _normalize_tag_key(key) in normalized_aliases:
+            return value
+    return None
+
+
 def _resource_type(resource_arn):
     resource_id = resource_arn.split(":", 5)[5]
     if resource_id.startswith("instance/"):
@@ -50,7 +63,8 @@ def _resource_id(resource_arn):
 
 
 def _is_auto_cleanup_enabled(tags):
-    return tags.get(AUTO_CLEANUP_TAG, "").strip().lower() == "true"
+    value = _get_tag_value(tags, AUTO_CLEANUP_TAG, "auto-cleanup", "AutoCleanup", "AUTOCLEANUP")
+    return (value or "").strip().lower() == "true"
 
 
 def _parse_created_on(raw_value):
@@ -61,11 +75,24 @@ def _should_cleanup(tags, today):
     if not _is_auto_cleanup_enabled(tags):
         return False, "auto_cleanup_disabled"
 
-    cleanup_schedule = tags.get(CLEANUP_SCHEDULE_TAG, "").strip().lower() or "daily"
+    cleanup_schedule_value = _get_tag_value(
+        tags,
+        CLEANUP_SCHEDULE_TAG,
+        "cleanup-schedule",
+        "CleanupSchedule",
+        "CLEANUPSCHEDULE",
+    )
+    cleanup_schedule = (cleanup_schedule_value or "").strip().lower() or "daily"
     if cleanup_schedule not in {"daily", "weekly", "monthly"}:
         cleanup_schedule = "daily"
 
-    created_on_raw = tags.get(CREATED_ON_TAG)
+    created_on_raw = _get_tag_value(
+        tags,
+        CREATED_ON_TAG,
+        "created-on",
+        "CreatedOn",
+        "CREATEDON",
+    )
 
     if cleanup_schedule == "daily":
         return True, "daily_due"
@@ -101,7 +128,6 @@ def _list_tagged_resources():
     paginator = tagging.get_paginator("get_resources")
     for page in paginator.paginate(
         ResourceTypeFilters=list(SUPPORTED_RESOURCE_TYPES),
-        TagFilters=[{"Key": AUTO_CLEANUP_TAG, "Values": ["true"]}],
     ):
         for resource in page.get("ResourceTagMappingList", []):
             yield resource

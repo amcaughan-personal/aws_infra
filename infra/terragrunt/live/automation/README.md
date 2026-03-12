@@ -11,6 +11,14 @@ The janitor is intentionally opt-in. A resource is only eligible for cleanup if 
 - `cleanup_schedule = daily|weekly|monthly`
 - `created_on = YYYY-MM-DD`
 
+The janitor is forgiving about common tag-key variations. These are treated the same:
+- `auto_cleanup`
+- `auto-cleanup`
+- `AutoCleanup`
+- `AUTOCLEANUP`
+
+The same normalization is applied to `cleanup_schedule` and `created_on`.
+
 Default behavior is forgiving:
 - if `cleanup_schedule` is missing or invalid, the janitor treats it as `daily`
 - if `created_on` is missing:
