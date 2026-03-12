@@ -17,7 +17,6 @@ Intent:
 
 Current shared endpoint bundle:
 - `execute-api` interface endpoint for private API Gateway access
-- `dev.internal` private hosted zone for readable internal service names
 - `s3` gateway endpoint for private subnet access to S3 without NAT
 
 Current test host stack:

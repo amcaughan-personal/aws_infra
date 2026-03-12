@@ -28,8 +28,6 @@ inputs = {
   private_route_table_ids = dependency.vpc.outputs.private_route_table_ids
   # Keep only the shared endpoints that current internal projects actually need.
   enable_execute_api     = true
-  enable_private_dns_zone = true
   enable_s3_gateway      = true
-  private_dns_zone_name  = "dev.internal"
   ssm_prefix             = "/network/dev/endpoints"
 }

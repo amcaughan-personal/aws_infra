@@ -45,16 +45,6 @@ resource "aws_vpc_endpoint" "s3_gateway" {
   route_table_ids   = var.private_route_table_ids
 }
 
-resource "aws_route53_zone" "private" {
-  count = var.enable_private_dns_zone ? 1 : 0
-
-  name = var.private_dns_zone_name
-
-  vpc {
-    vpc_id = var.vpc_id
-  }
-}
-
 resource "aws_ssm_parameter" "execute_api_vpce_id" {
   count = var.publish_ssm_parameters && var.enable_execute_api ? 1 : 0
 
@@ -77,20 +67,4 @@ resource "aws_ssm_parameter" "s3_gateway_endpoint_id" {
   name  = "${var.ssm_prefix}/s3_gateway_endpoint_id"
   type  = "String"
   value = aws_vpc_endpoint.s3_gateway[0].id
-}
-
-resource "aws_ssm_parameter" "private_dns_zone_id" {
-  count = var.publish_ssm_parameters && var.enable_private_dns_zone ? 1 : 0
-
-  name  = "${var.ssm_prefix}/private_dns_zone_id"
-  type  = "String"
-  value = aws_route53_zone.private[0].zone_id
-}
-
-resource "aws_ssm_parameter" "private_dns_zone_name" {
-  count = var.publish_ssm_parameters && var.enable_private_dns_zone ? 1 : 0
-
-  name  = "${var.ssm_prefix}/private_dns_zone_name"
-  type  = "String"
-  value = aws_route53_zone.private[0].name
 }

@@ -28,21 +28,6 @@ variable "enable_s3_gateway" {
   default = true
 }
 
-variable "enable_private_dns_zone" {
-  type    = bool
-  default = false
-}
-
-variable "private_dns_zone_name" {
-  type    = string
-  default = null
-
-  validation {
-    condition     = !var.enable_private_dns_zone || var.private_dns_zone_name != null
-    error_message = "private_dns_zone_name must be set when enable_private_dns_zone is true."
-  }
-}
-
 variable "ssm_prefix" {
   type = string
 }
