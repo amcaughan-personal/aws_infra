@@ -63,7 +63,17 @@ def _resource_id(resource_arn):
 
 
 def _is_auto_cleanup_enabled(tags):
-    value = _get_tag_value(tags, AUTO_CLEANUP_TAG, "auto-cleanup", "AutoCleanup", "AUTOCLEANUP")
+    value = _get_tag_value(
+        tags,
+        AUTO_CLEANUP_TAG,
+        "auto-cleanup",
+        "AutoCleanup",
+        "AUTOCLEANUP",
+        "auto_delete",
+        "auto-delete",
+        "AutoDelete",
+        "AUTODELETE",
+    )
     return (value or "").strip().lower() == "true"
 
 
@@ -84,7 +94,7 @@ def _should_cleanup(tags, today):
     )
     cleanup_schedule = (cleanup_schedule_value or "").strip().lower() or "daily"
     if cleanup_schedule not in {"daily", "weekly", "monthly"}:
-        cleanup_schedule = "daily"
+        return True, "daily_due_invalid_cleanup_schedule"
 
     created_on_raw = _get_tag_value(
         tags,
@@ -105,9 +115,7 @@ def _should_cleanup(tags, today):
     try:
         created_on = _parse_created_on(created_on_raw)
     except ValueError:
-        if cleanup_schedule == "weekly":
-            return today.weekday() == WEEKDAY_INDEX[WEEKLY_CLEANUP_WEEKDAY], "weekly_invalid_created_on_not_due"
-        return today.day == MONTHLY_CLEANUP_DAY, "monthly_invalid_created_on_not_due"
+        return True, "daily_due_invalid_created_on"
 
     if cleanup_schedule == "weekly":
         age_days = (today - created_on).days

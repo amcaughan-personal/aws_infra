@@ -14,6 +14,8 @@ The janitor is intentionally opt-in. A resource is only eligible for cleanup if 
 The janitor is forgiving about common tag-key variations. These are treated the same:
 - `auto_cleanup`
 - `auto-cleanup`
+- `auto_delete`
+- `auto-delete`
 - `AutoCleanup`
 - `AUTOCLEANUP`
 
@@ -21,10 +23,12 @@ The same normalization is applied to `cleanup_schedule` and `created_on`.
 
 Default behavior is forgiving:
 - if `cleanup_schedule` is missing or invalid, the janitor treats it as `daily`
+- if `cleanup_schedule` is malformed, the janitor deletes on the next run as a daily cleanup
 - if `created_on` is missing:
   - `daily` resources are deleted on the next run
   - `weekly` resources are deleted on Friday
   - `monthly` resources are deleted on the first of the month
+- if `created_on` is malformed, the janitor deletes on the next run as a daily cleanup
 
 The current janitor only acts on a narrow set of resource types:
 - EC2 instances
