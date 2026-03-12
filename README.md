@@ -6,6 +6,7 @@ This repository defines a small, opinionated baseline focused on:
 - account-level security visibility
 - high-signal alerts
 - cost guardrails
+- a shared low-cost dev network foundation for private service testing
 
 This is just for me personally to manage my AWS account.
 
@@ -16,6 +17,7 @@ What’s in here
 - Account-wide S3 public access block
 - Cost controls (Budgets, Cost Anomaly Detection)
 - Secure S3 patterns for logs and state
+- Shared dev VPC and shared endpoint stacks for private API/service experiments
 - Terragrunt-based layout for clarity and dependency management
 
 What’s intentionally not in here
@@ -27,6 +29,14 @@ What’s intentionally not in here
 Usage
 
 This repo is applied manually via Terragrunt. CI is limited to static analysis and security scanning.
+
+Shared dev network stacks live under `infra/terragrunt/live/network/dev`:
+- `vpc`
+  cheap shared foundation intended to stay up
+- `endpoints`
+  hourly-cost private connectivity layer intended to be easy to create/destroy
+
+That split is deliberate. The VPC itself is cheap; the interface endpoints are the part I may tear down when I'm not actively testing private connectivity.
 
 If you copy pieces from this repo, do so deliberately. Most modules are tightly scoped to a single-account context.
 
