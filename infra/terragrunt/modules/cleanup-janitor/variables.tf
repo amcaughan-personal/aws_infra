@@ -34,7 +34,7 @@ variable "created_on_tag_name" {
 
 variable "weekly_cleanup_weekday" {
   type    = string
-  default = "sun"
+  default = "fri"
 
   validation {
     condition = contains(

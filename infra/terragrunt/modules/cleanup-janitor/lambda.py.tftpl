@@ -61,29 +61,37 @@ def _should_cleanup(tags, today):
     if not _is_auto_cleanup_enabled(tags):
         return False, "auto_cleanup_disabled"
 
-    cleanup_schedule = tags.get(CLEANUP_SCHEDULE_TAG, "").strip().lower()
+    cleanup_schedule = tags.get(CLEANUP_SCHEDULE_TAG, "").strip().lower() or "daily"
     if cleanup_schedule not in {"daily", "weekly", "monthly"}:
-        return False, "invalid_cleanup_schedule"
+        cleanup_schedule = "daily"
 
     created_on_raw = tags.get(CREATED_ON_TAG)
+
+    if cleanup_schedule == "daily":
+        return True, "daily_due"
+
     if not created_on_raw:
-        return False, "missing_created_on"
+        if cleanup_schedule == "weekly":
+            return today.weekday() == WEEKDAY_INDEX[WEEKLY_CLEANUP_WEEKDAY], "weekly_no_created_on_not_due"
+        return today.day == MONTHLY_CLEANUP_DAY, "monthly_no_created_on_not_due"
 
     try:
         created_on = _parse_created_on(created_on_raw)
     except ValueError:
-        return False, "invalid_created_on"
+        if cleanup_schedule == "weekly":
+            return today.weekday() == WEEKDAY_INDEX[WEEKLY_CLEANUP_WEEKDAY], "weekly_invalid_created_on_not_due"
+        return today.day == MONTHLY_CLEANUP_DAY, "monthly_invalid_created_on_not_due"
+
+    if cleanup_schedule == "weekly":
+        age_days = (today - created_on).days
+        if age_days < 0:
+            return False, "created_on_in_future"
+        is_due = age_days >= 7 and today.weekday() == WEEKDAY_INDEX[WEEKLY_CLEANUP_WEEKDAY]
+        return is_due, "weekly_not_due_yet"
 
     age_days = (today - created_on).days
     if age_days < 0:
         return False, "created_on_in_future"
-
-    if cleanup_schedule == "daily":
-        return age_days >= 1, "daily_not_due_yet"
-
-    if cleanup_schedule == "weekly":
-        is_due = age_days >= 7 and today.weekday() == WEEKDAY_INDEX[WEEKLY_CLEANUP_WEEKDAY]
-        return is_due, "weekly_not_due_yet"
 
     is_due = age_days >= 28 and today.day == MONTHLY_CLEANUP_DAY
     return is_due, "monthly_not_due_yet"
