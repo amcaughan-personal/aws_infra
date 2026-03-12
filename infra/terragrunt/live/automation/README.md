@@ -11,15 +11,13 @@ The janitor is intentionally opt-in. A resource is only eligible for cleanup if 
 - `cleanup_schedule = daily|weekly|monthly`
 - `created_on = YYYY-MM-DD`
 
-The janitor is forgiving about common tag-key variations. These are treated the same:
+The janitor accepts a small explicit set of opt-in tag keys:
 - `auto_cleanup`
 - `auto-cleanup`
 - `auto_delete`
 - `auto-delete`
-- `AutoCleanup`
-- `AUTOCLEANUP`
 
-The same normalization is applied to `cleanup_schedule` and `created_on`.
+Those same tag keys are used to scope the janitor's IAM permissions, so destructive actions are limited to resources that carry one of the accepted opt-in tags with value `true`.
 
 Default behavior is forgiving:
 - if `cleanup_schedule` is missing or invalid, the janitor treats it as `daily`

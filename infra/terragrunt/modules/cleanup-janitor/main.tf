@@ -1,6 +1,10 @@
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
+locals {
+  accepted_cleanup_tag_names = distinct(concat([var.cleanup_tag_name], var.accepted_cleanup_tag_names))
+}
+
 data "aws_iam_policy_document" "lambda_assume" {
   statement {
     effect = "Allow"
@@ -29,15 +33,24 @@ data "aws_iam_policy_document" "lambda" {
     resources = ["*"]
   }
 
-  statement {
-    sid    = "CleanupEc2Resources"
-    effect = "Allow"
-    actions = [
-      "ec2:DeleteSecurityGroup",
-      "ec2:DeleteVpcEndpoints",
-      "ec2:TerminateInstances",
-    ]
-    resources = ["*"]
+  dynamic "statement" {
+    for_each = local.accepted_cleanup_tag_names
+    content {
+      sid    = "CleanupEc2Resources${replace(replace(replace(title(statement.value), "_", ""), "-", ""), " ", "")}"
+      effect = "Allow"
+      actions = [
+        "ec2:DeleteSecurityGroup",
+        "ec2:DeleteVpcEndpoints",
+        "ec2:TerminateInstances",
+      ]
+      resources = ["*"]
+
+      condition {
+        test     = "StringEquals"
+        variable = "aws:ResourceTag/${statement.value}"
+        values   = ["true"]
+      }
+    }
   }
 
   statement {
@@ -89,6 +102,7 @@ data "archive_file" "lambda_zip" {
 
   source {
     content = templatefile("${path.module}/lambda.py.tftpl", {
+      accepted_cleanup_tag_names = jsonencode(local.accepted_cleanup_tag_names)
       cleanup_schedule_tag_name = var.cleanup_schedule_tag_name
       cleanup_tag_name          = var.cleanup_tag_name
       created_on_tag_name       = var.created_on_tag_name

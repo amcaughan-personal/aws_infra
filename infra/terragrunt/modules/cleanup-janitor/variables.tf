@@ -22,6 +22,11 @@ variable "cleanup_tag_name" {
   default = "auto_cleanup"
 }
 
+variable "accepted_cleanup_tag_names" {
+  type    = list(string)
+  default = ["auto-cleanup", "auto_delete", "auto-delete"]
+}
+
 variable "cleanup_schedule_tag_name" {
   type    = string
   default = "cleanup_schedule"
