@@ -6,6 +6,7 @@ This repository defines a small, opinionated baseline focused on:
 - account-level security visibility
 - high-signal alerts
 - cost guardrails
+- low-friction automation for disposable resources
 - a shared low-cost dev network foundation for private service testing
 
 This is just for me personally to manage my AWS account.
@@ -16,6 +17,7 @@ What’s in here
 - GuardDuty with optional automated response for EC2 cryptomining
 - Account-wide S3 public access block
 - Cost controls (Budgets, Cost Anomaly Detection)
+- Scheduled automation for cleaning up opted-in disposable resources
 - Secure S3 patterns for logs and state
 - Shared dev VPC and shared endpoint stacks for private API/service experiments
 - Terragrunt-based layout for clarity and dependency management
@@ -37,6 +39,10 @@ Shared dev network stacks live under `infra/terragrunt/live/network/dev`:
   hourly-cost private connectivity layer intended to be easy to create/destroy
 
 That split is deliberate. The VPC itself is cheap; the interface endpoints are the part I may tear down when I'm not actively testing private connectivity.
+
+Scheduled automation stacks live under `infra/terragrunt/live/automation`:
+- `cleanup-janitor`
+  daily account janitor for explicitly tagged disposable resources
 
 If you copy pieces from this repo, do so deliberately. Most modules are tightly scoped to a single-account context.
 
