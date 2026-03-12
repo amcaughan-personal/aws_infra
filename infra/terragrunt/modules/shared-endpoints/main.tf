@@ -1,5 +1,15 @@
 data "aws_region" "current" {}
 
+moved {
+  from = aws_vpc_endpoint.execute_api[0]
+  to   = aws_vpc_endpoint.interface["execute_api"]
+}
+
+moved {
+  from = aws_ssm_parameter.execute_api_vpce_id[0]
+  to   = aws_ssm_parameter.interface_endpoint_id["execute_api"]
+}
+
 resource "time_static" "created_on" {
   count = var.auto_cleanup_enabled ? 1 : 0
 }
