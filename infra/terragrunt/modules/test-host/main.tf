@@ -98,7 +98,7 @@ resource "aws_security_group" "session_manager_endpoints" {
 
 resource "aws_vpc_endpoint" "ssm" {
   vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.ssm"
+  service_name        = "com.amazonaws.${data.aws_region.current.region}.ssm"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = [var.subnet_id]
   security_group_ids  = [aws_security_group.session_manager_endpoints.id]
@@ -114,7 +114,7 @@ resource "aws_vpc_endpoint" "ssm" {
 
 resource "aws_vpc_endpoint" "ssmmessages" {
   vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.ssmmessages"
+  service_name        = "com.amazonaws.${data.aws_region.current.region}.ssmmessages"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = [var.subnet_id]
   security_group_ids  = [aws_security_group.session_manager_endpoints.id]
@@ -130,7 +130,7 @@ resource "aws_vpc_endpoint" "ssmmessages" {
 
 resource "aws_vpc_endpoint" "ec2messages" {
   vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.ec2messages"
+  service_name        = "com.amazonaws.${data.aws_region.current.region}.ec2messages"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = [var.subnet_id]
   security_group_ids  = [aws_security_group.session_manager_endpoints.id]
