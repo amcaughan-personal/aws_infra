@@ -53,6 +53,11 @@ variable "enable_glue" {
   default = false
 }
 
+variable "enable_sts" {
+  type    = bool
+  default = false
+}
+
 variable "enable_kinesis_streams" {
   type    = bool
   default = false

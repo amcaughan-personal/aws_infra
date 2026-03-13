@@ -13,6 +13,7 @@ locals {
     var.enable_ssm ? { ssm = "ssm" } : {},
     var.enable_athena ? { athena = "athena" } : {},
     var.enable_glue ? { glue = "glue" } : {},
+    var.enable_sts ? { sts = "sts" } : {},
     var.enable_kinesis_streams ? { kinesis_streams = "kinesis-streams" } : {},
   )
 

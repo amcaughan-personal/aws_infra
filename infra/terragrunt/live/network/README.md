@@ -30,6 +30,7 @@ Current shared endpoint bundle:
 - `logs` interface endpoint for private ECS and Firehose logging
 - `ssm` interface endpoint for private runtime configuration lookups
 - `athena` and `glue` interface endpoints for private ELT query and catalog access
+- `sts` interface endpoint for private ELT and Athena identity resolution
 - `kinesis-streams` interface endpoint for private streaming workflow emission
 - `s3` gateway endpoint for private subnet access to S3 without NAT
 - weekly cleanup tagging so the janitor can remove the costly endpoint layer if I forget

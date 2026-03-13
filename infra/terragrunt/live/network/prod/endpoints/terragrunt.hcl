@@ -33,6 +33,7 @@ inputs = {
   enable_ssm              = true
   enable_athena           = true
   enable_glue             = true
+  enable_sts              = true
   enable_kinesis_streams  = true
   enable_s3_gateway       = true
   auto_cleanup_enabled    = true
