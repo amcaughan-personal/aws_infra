@@ -9,6 +9,10 @@ locals {
     "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:security-group/*",
     "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:vpc-endpoint/*",
   ]
+  ecs_task_resource_arns = [
+    "arn:${data.aws_partition.current.partition}:ecs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:task/*",
+    "arn:${data.aws_partition.current.partition}:ecs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:task/*/*",
+  ]
   log_resource_arns = [
     "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.function_name}",
     "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.function_name}:*",
@@ -63,6 +67,24 @@ data "aws_iam_policy_document" "lambda" {
     }
   }
 
+  dynamic "statement" {
+    for_each = local.accepted_cleanup_tag_names
+    content {
+      sid    = "CleanupEcsTasks${replace(replace(replace(title(statement.value), "_", ""), "-", ""), " ", "")}"
+      effect = "Allow"
+      actions = [
+        "ecs:StopTask",
+      ]
+      resources = local.ecs_task_resource_arns
+
+      condition {
+        test     = "StringEquals"
+        variable = "aws:ResourceTag/${statement.value}"
+        values   = ["true"]
+      }
+    }
+  }
+
   statement {
     sid    = "DescribeEc2State"
     effect = "Allow"
@@ -70,6 +92,15 @@ data "aws_iam_policy_document" "lambda" {
       "ec2:DescribeInstances",
       "ec2:DescribeSecurityGroups",
       "ec2:DescribeVpcEndpoints",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "DescribeEcsState"
+    effect = "Allow"
+    actions = [
+      "ecs:DescribeTasks",
     ]
     resources = ["*"]
   }

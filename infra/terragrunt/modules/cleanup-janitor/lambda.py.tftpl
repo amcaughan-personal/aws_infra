@@ -6,6 +6,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 ec2 = boto3.client("ec2")
+ecs = boto3.client("ecs")
 tagging = boto3.client("resourcegroupstaggingapi")
 
 AUTO_CLEANUP_TAG = "${cleanup_tag_name}"
@@ -19,6 +20,7 @@ SUPPORTED_RESOURCE_TYPES = (
     "ec2:instance",
     "ec2:security-group",
     "ec2:vpc-endpoint",
+    "ecs:task",
 )
 
 WEEKDAY_INDEX = {
@@ -55,11 +57,23 @@ def _resource_type(resource_arn):
         return "ec2:security-group"
     if resource_id.startswith("vpc-endpoint/"):
         return "ec2:vpc-endpoint"
+    if resource_id.startswith("task/"):
+        return "ecs:task"
     return None
 
 
 def _resource_id(resource_arn):
+    if _resource_type(resource_arn) == "ecs:task":
+        return resource_arn
     return resource_arn.rsplit("/", 1)[-1]
+
+
+def _ecs_cluster_from_task_arn(task_arn):
+    resource_id = task_arn.split(":", 5)[5]
+    parts = resource_id.split("/")
+    if len(parts) >= 3 and parts[0] == "task":
+        return parts[1]
+    return None
 
 
 def _is_auto_cleanup_enabled(tags):
@@ -158,6 +172,27 @@ def _delete_security_groups(group_ids):
     return {"deleted": deleted, "failed": failed}
 
 
+def _stop_ecs_tasks(task_arns):
+    stopped = []
+    failed = []
+
+    for task_arn in task_arns:
+        cluster = _ecs_cluster_from_task_arn(task_arn)
+        try:
+            kwargs = {
+                "task": task_arn,
+                "reason": "Stopped by cleanup janitor",
+            }
+            if cluster is not None:
+                kwargs["cluster"] = cluster
+            ecs.stop_task(**kwargs)
+            stopped.append(task_arn)
+        except ClientError as exc:
+            failed.append({"resource_id": task_arn, "error": str(exc)})
+
+    return {"stopped": stopped, "failed": failed}
+
+
 def handler(event, context):
     del event, context
 
@@ -197,6 +232,11 @@ def handler(event, context):
         results["actions"]["terminate_instances"] = {"terminated": [], "failed": str(exc)}
 
     results["actions"]["delete_security_groups"] = _delete_security_groups(eligible["ec2:security-group"])
+
+    try:
+        results["actions"]["stop_ecs_tasks"] = _stop_ecs_tasks(eligible["ecs:task"])
+    except ClientError as exc:
+        results["actions"]["stop_ecs_tasks"] = {"stopped": [], "failed": str(exc)}
 
     print(json.dumps(results, sort_keys=True))
     return results

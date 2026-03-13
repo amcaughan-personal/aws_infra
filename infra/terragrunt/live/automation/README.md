@@ -33,5 +33,6 @@ The current janitor only acts on a narrow set of resource types:
 - EC2 instances
 - VPC endpoints
 - security groups
+- ECS tasks
 
 That keeps the first version easy to reason about and reduces the chance of it deleting something surprising.
