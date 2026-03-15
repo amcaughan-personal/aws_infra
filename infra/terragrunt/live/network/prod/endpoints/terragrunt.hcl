@@ -21,6 +21,11 @@ terraform {
 }
 
 inputs = {
+  extra_default_tags = {
+    auto_cleanup     = "true"
+    cleanup_schedule = "weekly"
+    created_on       = run_cmd("date", "-u", "+%Y-%m-%d")
+  }
   name_prefix             = "prod-shared"
   vpc_id                  = dependency.vpc.outputs.vpc_id
   vpc_cidr                = dependency.vpc.outputs.vpc_cidr
@@ -36,10 +41,5 @@ inputs = {
   enable_sts              = true
   enable_kinesis_streams  = true
   enable_s3_gateway       = true
-  resource_tags = {
-    auto_cleanup     = "true"
-    cleanup_schedule = "weekly"
-    created_on       = run_cmd("date", "-u", "+%Y-%m-%d")
-  }
   ssm_prefix              = "/network/prod/endpoints"
 }

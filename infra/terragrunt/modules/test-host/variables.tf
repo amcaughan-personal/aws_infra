@@ -27,9 +27,3 @@ variable "publish_ssm_parameters" {
   type    = bool
   default = true
 }
-
-variable "resource_tags" {
-  type        = map(string)
-  default     = {}
-  description = "Additional tags to apply to the created resources."
-}

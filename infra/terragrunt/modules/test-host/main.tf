@@ -38,7 +38,6 @@ resource "aws_security_group" "host" {
   vpc_id      = var.vpc_id
 
   tags = merge(
-    var.resource_tags,
     {
       Name = "${var.name_prefix}-host"
     },
@@ -60,7 +59,6 @@ resource "aws_security_group" "session_manager_endpoints" {
   vpc_id      = var.vpc_id
 
   tags = merge(
-    var.resource_tags,
     {
       Name = "${var.name_prefix}-session-manager-endpoints"
     },
@@ -93,7 +91,6 @@ resource "aws_vpc_endpoint" "ssm" {
   private_dns_enabled = true
 
   tags = merge(
-    var.resource_tags,
     {
       Name = "${var.name_prefix}-ssm"
     },
@@ -109,7 +106,6 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   private_dns_enabled = true
 
   tags = merge(
-    var.resource_tags,
     {
       Name = "${var.name_prefix}-ssmmessages"
     },
@@ -125,7 +121,6 @@ resource "aws_vpc_endpoint" "ec2messages" {
   private_dns_enabled = true
 
   tags = merge(
-    var.resource_tags,
     {
       Name = "${var.name_prefix}-ec2messages"
     },
@@ -154,7 +149,6 @@ resource "aws_instance" "this" {
   }
 
   tags = merge(
-    var.resource_tags,
     {
       Name = var.name_prefix
     },

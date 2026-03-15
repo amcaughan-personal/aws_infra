@@ -22,7 +22,6 @@ resource "aws_security_group" "interface_endpoints" {
   vpc_id      = var.vpc_id
 
   tags = merge(
-    var.resource_tags,
     {
       Name = "${var.name_prefix}-interface-endpoints"
     },
@@ -57,7 +56,6 @@ resource "aws_vpc_endpoint" "interface" {
   private_dns_enabled = true
 
   tags = merge(
-    var.resource_tags,
     {
       Name = "${var.name_prefix}-${replace(each.key, "_", "-")}"
     },
@@ -73,7 +71,6 @@ resource "aws_vpc_endpoint" "s3_gateway" {
   route_table_ids   = var.private_route_table_ids
 
   tags = merge(
-    var.resource_tags,
     {
       Name = "${var.name_prefix}-s3-gateway"
     },
