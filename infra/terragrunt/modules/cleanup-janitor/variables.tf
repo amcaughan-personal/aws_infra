@@ -32,9 +32,24 @@ variable "cleanup_schedule_tag_name" {
   default = "cleanup_schedule"
 }
 
+variable "cleanup_ttl_tag_name" {
+  type    = string
+  default = "cleanup_ttl"
+}
+
+variable "accepted_cleanup_ttl_tag_names" {
+  type    = list(string)
+  default = ["cleanup-ttl", "ttl"]
+}
+
 variable "created_on_tag_name" {
   type    = string
   default = "created_on"
+}
+
+variable "created_at_tag_name" {
+  type    = string
+  default = "created_at"
 }
 
 variable "weekly_cleanup_weekday" {

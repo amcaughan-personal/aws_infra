@@ -1,26 +1,46 @@
 import datetime
+import itertools
 import json
 import re
 
 import boto3
 from botocore.exceptions import ClientError
 
+athena = boto3.client("athena")
 ec2 = boto3.client("ec2")
+ecr = boto3.client("ecr")
 ecs = boto3.client("ecs")
+firehose = boto3.client("firehose")
+glue = boto3.client("glue")
+kinesis = boto3.client("kinesis")
+logs = boto3.client("logs")
+s3 = boto3.client("s3")
+scheduler = boto3.client("scheduler")
 tagging = boto3.client("resourcegroupstaggingapi")
 
 AUTO_CLEANUP_TAG = "${cleanup_tag_name}"
 ACCEPTED_AUTO_CLEANUP_TAGS = ${accepted_cleanup_tag_names}
 CLEANUP_SCHEDULE_TAG = "${cleanup_schedule_tag_name}"
+TTL_TAG = "${cleanup_ttl_tag_name}"
+ACCEPTED_TTL_TAGS = ${accepted_cleanup_ttl_tag_names}
+CREATED_AT_TAG = "${created_at_tag_name}"
 CREATED_ON_TAG = "${created_on_tag_name}"
 WEEKLY_CLEANUP_WEEKDAY = "${weekly_cleanup_weekday}"
 MONTHLY_CLEANUP_DAY = ${monthly_cleanup_day}
 
 SUPPORTED_RESOURCE_TYPES = (
+    "athena:workgroup",
+    "ecr:repository",
     "ec2:instance",
     "ec2:security-group",
     "ec2:vpc-endpoint",
     "ecs:task",
+    "firehose:deliverystream",
+    "glue:database",
+    "kinesis:stream",
+    "logs:log-group",
+    "s3:bucket",
+    "scheduler:schedule",
 )
 
 WEEKDAY_INDEX = {
@@ -49,23 +69,95 @@ def _normalize_schedule_value(value):
     return re.sub(r"[^a-z]", "", value.lower())
 
 
+def _parse_ttl(raw_value):
+    normalized = (raw_value or "").strip().lower()
+    if normalized == "":
+        raise ValueError("empty_ttl")
+
+    match = re.fullmatch(r"(\d+)\s*([mhdw]?)", normalized)
+    if match is None:
+        raise ValueError(f"invalid_ttl:{raw_value}")
+
+    amount = int(match.group(1))
+    unit = match.group(2) or "h"
+    if unit == "m":
+        return datetime.timedelta(minutes=amount)
+    if unit == "h":
+        return datetime.timedelta(hours=amount)
+    if unit == "d":
+        return datetime.timedelta(days=amount)
+    if unit == "w":
+        return datetime.timedelta(weeks=amount)
+    raise ValueError(f"invalid_ttl_unit:{raw_value}")
+
+
+def _parse_created_at(raw_value):
+    normalized = (raw_value or "").strip()
+    if normalized == "":
+        raise ValueError("empty_created_at")
+
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+
+    created_at = datetime.datetime.fromisoformat(normalized)
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=datetime.UTC)
+    return created_at.astimezone(datetime.UTC)
+
+
 def _resource_type(resource_arn):
-    resource_id = resource_arn.split(":", 5)[5]
-    if resource_id.startswith("instance/"):
+    arn_parts = resource_arn.split(":", 5)
+    if len(arn_parts) < 6:
+        return None
+
+    service = arn_parts[2]
+    resource_id = arn_parts[5]
+    if service == "athena" and resource_id.startswith("workgroup/"):
+        return "athena:workgroup"
+    if service == "ecr" and resource_id.startswith("repository/"):
+        return "ecr:repository"
+    if service == "ec2" and resource_id.startswith("instance/"):
         return "ec2:instance"
-    if resource_id.startswith("security-group/"):
+    if service == "ec2" and resource_id.startswith("security-group/"):
         return "ec2:security-group"
-    if resource_id.startswith("vpc-endpoint/"):
+    if service == "ec2" and resource_id.startswith("vpc-endpoint/"):
         return "ec2:vpc-endpoint"
-    if resource_id.startswith("task/"):
+    if service == "ecs" and resource_id.startswith("task/"):
         return "ecs:task"
+    if service == "firehose" and resource_id.startswith("deliverystream/"):
+        return "firehose:deliverystream"
+    if service == "glue" and resource_id.startswith("database/"):
+        return "glue:database"
+    if service == "kinesis" and resource_id.startswith("stream/"):
+        return "kinesis:stream"
+    if service == "logs" and resource_id.startswith("log-group:"):
+        return "logs:log-group"
+    if service == "s3":
+        return "s3:bucket"
+    if service == "scheduler" and resource_id.startswith("schedule/"):
+        return "scheduler:schedule"
     return None
 
 
 def _resource_id(resource_arn):
-    if _resource_type(resource_arn) == "ecs:task":
+    resource_type = _resource_type(resource_arn)
+    arn_parts = resource_arn.split(":", 5)
+    resource_id = arn_parts[5]
+
+    if resource_type == "ecs:task":
         return resource_arn
-    return resource_arn.rsplit("/", 1)[-1]
+    if resource_type == "logs:log-group":
+        log_group_name = resource_id.split("log-group:", 1)[1]
+        if log_group_name.endswith(":*"):
+            return log_group_name[:-2]
+        return log_group_name
+    if resource_type == "scheduler:schedule":
+        return resource_id.split("schedule/", 1)[1]
+    if resource_type in {"athena:workgroup", "ecr:repository", "firehose:deliverystream", "glue:database", "kinesis:stream"}:
+        return resource_id.rsplit("/", 1)[-1]
+    if resource_type == "s3:bucket":
+        return resource_id
+    return resource_id.rsplit("/", 1)[-1]
 
 
 def _ecs_cluster_from_task_arn(task_arn):
@@ -88,10 +180,48 @@ def _parse_created_on(raw_value):
     return datetime.date.fromisoformat(raw_value)
 
 
-def _should_cleanup(tags, today):
+def _resolve_reference_time(tags):
+    created_at_raw = _get_tag_value(
+        tags,
+        [CREATED_AT_TAG, "created-at"],
+    )
+    if created_at_raw:
+        return _parse_created_at(created_at_raw)
+
+    created_on_raw = _get_tag_value(
+        tags,
+        [CREATED_ON_TAG, "created-on"],
+    )
+    if created_on_raw:
+        created_on = _parse_created_on(created_on_raw)
+        return datetime.datetime.combine(created_on, datetime.time.min, tzinfo=datetime.UTC)
+
+    raise ValueError("missing_created_timestamp")
+
+
+def _should_cleanup(tags, now):
     if not _is_auto_cleanup_enabled(tags):
         return False, "auto_cleanup_disabled"
 
+    ttl_value = _get_tag_value(tags, ACCEPTED_TTL_TAGS)
+    if ttl_value is not None:
+        try:
+            ttl = _parse_ttl(ttl_value)
+        except ValueError:
+            return True, "ttl_due_invalid_cleanup_ttl"
+
+        try:
+            reference_time = _resolve_reference_time(tags)
+        except ValueError:
+            return True, "ttl_due_missing_created_timestamp"
+
+        if reference_time > now:
+            return False, "created_timestamp_in_future"
+        if now >= reference_time + ttl:
+            return True, "ttl_due"
+        return False, "ttl_not_due_yet"
+
+    today = now.date()
     cleanup_schedule_value = _get_tag_value(
         tags,
         [CLEANUP_SCHEDULE_TAG, "cleanup-schedule"],
@@ -110,8 +240,10 @@ def _should_cleanup(tags, today):
 
     if not created_on_raw:
         if cleanup_schedule == "weekly":
-            return today.weekday() == WEEKDAY_INDEX[WEEKLY_CLEANUP_WEEKDAY], "weekly_no_created_on_not_due"
-        return today.day == MONTHLY_CLEANUP_DAY, "monthly_no_created_on_not_due"
+            is_due = today.weekday() == WEEKDAY_INDEX[WEEKLY_CLEANUP_WEEKDAY]
+            return is_due, "weekly_due" if is_due else "weekly_no_created_on_not_due"
+        is_due = today.day == MONTHLY_CLEANUP_DAY
+        return is_due, "monthly_due" if is_due else "monthly_no_created_on_not_due"
 
     try:
         created_on = _parse_created_on(created_on_raw)
@@ -123,23 +255,77 @@ def _should_cleanup(tags, today):
         if age_days < 0:
             return False, "created_on_in_future"
         is_due = age_days >= 7 and today.weekday() == WEEKDAY_INDEX[WEEKLY_CLEANUP_WEEKDAY]
-        return is_due, "weekly_not_due_yet"
+        return is_due, "weekly_due" if is_due else "weekly_not_due_yet"
 
     age_days = (today - created_on).days
     if age_days < 0:
         return False, "created_on_in_future"
 
     is_due = age_days >= 28 and today.day == MONTHLY_CLEANUP_DAY
-    return is_due, "monthly_not_due_yet"
+    return is_due, "monthly_due" if is_due else "monthly_not_due_yet"
 
 
 def _list_tagged_resources():
     paginator = tagging.get_paginator("get_resources")
-    for page in paginator.paginate(
-        ResourceTypeFilters=list(SUPPORTED_RESOURCE_TYPES),
-    ):
+    for page in paginator.paginate():
         for resource in page.get("ResourceTagMappingList", []):
             yield resource
+
+
+def _chunked(items, size):
+    iterator = iter(items)
+    while True:
+        batch = list(itertools.islice(iterator, size))
+        if not batch:
+            return
+        yield batch
+
+
+def _delete_s3_buckets(bucket_names):
+    deleted = []
+    failed = []
+
+    for bucket_name in bucket_names:
+        try:
+            version_paginator = s3.get_paginator("list_object_versions")
+            for page in version_paginator.paginate(Bucket=bucket_name):
+                object_versions = [
+                    {"Key": item["Key"], "VersionId": item["VersionId"]}
+                    for item in page.get("Versions", [])
+                ]
+                delete_markers = [
+                    {"Key": item["Key"], "VersionId": item["VersionId"]}
+                    for item in page.get("DeleteMarkers", [])
+                ]
+                for batch in _chunked(object_versions + delete_markers, 1000):
+                    s3.delete_objects(Bucket=bucket_name, Delete={"Objects": batch, "Quiet": True})
+
+            object_paginator = s3.get_paginator("list_objects_v2")
+            for page in object_paginator.paginate(Bucket=bucket_name):
+                objects = [{"Key": item["Key"]} for item in page.get("Contents", [])]
+                for batch in _chunked(objects, 1000):
+                    s3.delete_objects(Bucket=bucket_name, Delete={"Objects": batch, "Quiet": True})
+
+            s3.delete_bucket(Bucket=bucket_name)
+            deleted.append(bucket_name)
+        except ClientError as exc:
+            failed.append({"resource_id": bucket_name, "error": str(exc)})
+
+    return {"deleted": deleted, "failed": failed}
+
+
+def _delete_ecr_repositories(repository_names):
+    deleted = []
+    failed = []
+
+    for repository_name in repository_names:
+        try:
+            ecr.delete_repository(repositoryName=repository_name, force=True)
+            deleted.append(repository_name)
+        except ClientError as exc:
+            failed.append({"resource_id": repository_name, "error": str(exc)})
+
+    return {"deleted": deleted, "failed": failed}
 
 
 def _delete_vpc_endpoints(endpoint_ids):
@@ -193,10 +379,108 @@ def _stop_ecs_tasks(task_arns):
     return {"stopped": stopped, "failed": failed}
 
 
+def _delete_firehose_delivery_streams(delivery_stream_names):
+    deleted = []
+    failed = []
+
+    for delivery_stream_name in delivery_stream_names:
+        try:
+            firehose.delete_delivery_stream(
+                DeliveryStreamName=delivery_stream_name,
+                AllowForceDelete=True,
+            )
+            deleted.append(delivery_stream_name)
+        except ClientError as exc:
+            failed.append({"resource_id": delivery_stream_name, "error": str(exc)})
+
+    return {"deleted": deleted, "failed": failed}
+
+
+def _delete_glue_databases(database_names):
+    deleted = []
+    failed = []
+
+    for database_name in database_names:
+        try:
+            paginator = glue.get_paginator("get_tables")
+            for page in paginator.paginate(DatabaseName=database_name):
+                for table in page.get("TableList", []):
+                    glue.delete_table(DatabaseName=database_name, Name=table["Name"])
+            glue.delete_database(Name=database_name)
+            deleted.append(database_name)
+        except ClientError as exc:
+            failed.append({"resource_id": database_name, "error": str(exc)})
+
+    return {"deleted": deleted, "failed": failed}
+
+
+def _delete_kinesis_streams(stream_names):
+    deleted = []
+    failed = []
+
+    for stream_name in stream_names:
+        try:
+            kinesis.delete_stream(
+                StreamName=stream_name,
+                EnforceConsumerDeletion=True,
+            )
+            deleted.append(stream_name)
+        except ClientError as exc:
+            failed.append({"resource_id": stream_name, "error": str(exc)})
+
+    return {"deleted": deleted, "failed": failed}
+
+
+def _delete_log_groups(log_group_names):
+    deleted = []
+    failed = []
+
+    for log_group_name in log_group_names:
+        try:
+            logs.delete_log_group(logGroupName=log_group_name)
+            deleted.append(log_group_name)
+        except ClientError as exc:
+            failed.append({"resource_id": log_group_name, "error": str(exc)})
+
+    return {"deleted": deleted, "failed": failed}
+
+
+def _delete_scheduler_schedules(schedule_ids):
+    deleted = []
+    failed = []
+
+    for schedule_id in schedule_ids:
+        try:
+            group_name, schedule_name = schedule_id.split("/", 1)
+            scheduler.delete_schedule(Name=schedule_name, GroupName=group_name)
+            deleted.append(schedule_id)
+        except (ClientError, ValueError) as exc:
+            failed.append({"resource_id": schedule_id, "error": str(exc)})
+
+    return {"deleted": deleted, "failed": failed}
+
+
+def _delete_athena_workgroups(workgroup_names):
+    deleted = []
+    failed = []
+
+    for workgroup_name in workgroup_names:
+        try:
+            athena.delete_work_group(
+                WorkGroup=workgroup_name,
+                RecursiveDeleteOption=True,
+            )
+            deleted.append(workgroup_name)
+        except ClientError as exc:
+            failed.append({"resource_id": workgroup_name, "error": str(exc)})
+
+    return {"deleted": deleted, "failed": failed}
+
+
 def handler(event, context):
     del event, context
 
-    today = datetime.datetime.now(datetime.UTC).date()
+    now = datetime.datetime.now(datetime.UTC)
     eligible = {resource_type: [] for resource_type in SUPPORTED_RESOURCE_TYPES}
     skipped = []
 
@@ -208,18 +492,30 @@ def handler(event, context):
             continue
 
         tags = _parse_tags(resource.get("Tags", []))
-        should_cleanup, reason = _should_cleanup(tags, today)
+        should_cleanup, reason = _should_cleanup(tags, now)
         if should_cleanup:
             eligible[resource_type].append(_resource_id(resource_arn))
         else:
             skipped.append({"resource_arn": resource_arn, "reason": reason})
 
     results = {
-        "date": today.isoformat(),
+        "date": now.date().isoformat(),
         "eligible": eligible,
         "skipped": skipped,
         "actions": {},
     }
+
+    results["actions"]["stop_ecs_tasks"] = _stop_ecs_tasks(eligible["ecs:task"])
+    results["actions"]["delete_scheduler_schedules"] = _delete_scheduler_schedules(eligible["scheduler:schedule"])
+    results["actions"]["delete_firehose_delivery_streams"] = _delete_firehose_delivery_streams(
+        eligible["firehose:deliverystream"]
+    )
+    results["actions"]["delete_kinesis_streams"] = _delete_kinesis_streams(eligible["kinesis:stream"])
+    results["actions"]["delete_athena_workgroups"] = _delete_athena_workgroups(eligible["athena:workgroup"])
+    results["actions"]["delete_glue_databases"] = _delete_glue_databases(eligible["glue:database"])
+    results["actions"]["delete_ecr_repositories"] = _delete_ecr_repositories(eligible["ecr:repository"])
+    results["actions"]["delete_log_groups"] = _delete_log_groups(eligible["logs:log-group"])
+    results["actions"]["delete_s3_buckets"] = _delete_s3_buckets(eligible["s3:bucket"])
 
     try:
         results["actions"]["delete_vpc_endpoints"] = _delete_vpc_endpoints(eligible["ec2:vpc-endpoint"])
@@ -232,11 +528,6 @@ def handler(event, context):
         results["actions"]["terminate_instances"] = {"terminated": [], "failed": str(exc)}
 
     results["actions"]["delete_security_groups"] = _delete_security_groups(eligible["ec2:security-group"])
-
-    try:
-        results["actions"]["stop_ecs_tasks"] = _stop_ecs_tasks(eligible["ecs:task"])
-    except ClientError as exc:
-        results["actions"]["stop_ecs_tasks"] = {"stopped": [], "failed": str(exc)}
 
     print(json.dumps(results, sort_keys=True))
     return results

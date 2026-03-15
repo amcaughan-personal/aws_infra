@@ -4,6 +4,7 @@ data "aws_region" "current" {}
 
 locals {
   accepted_cleanup_tag_names = distinct(concat([var.cleanup_tag_name], var.accepted_cleanup_tag_names))
+  accepted_cleanup_ttl_tag_names = distinct(concat([var.cleanup_ttl_tag_name], var.accepted_cleanup_ttl_tag_names))
   ec2_resource_arns = [
     "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*",
     "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:security-group/*",
@@ -106,6 +107,90 @@ data "aws_iam_policy_document" "lambda" {
   }
 
   statement {
+    sid    = "CleanupS3Buckets"
+    effect = "Allow"
+    actions = [
+      "s3:DeleteBucket",
+      "s3:DeleteObject",
+      "s3:DeleteObjectVersion",
+      "s3:ListBucket",
+      "s3:ListBucketVersions",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "CleanupEcrRepositories"
+    effect = "Allow"
+    actions = [
+      "ecr:DeleteRepository",
+      "ecr:DescribeRepositories",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "CleanupLogGroups"
+    effect = "Allow"
+    actions = [
+      "logs:DeleteLogGroup",
+      "logs:DescribeLogGroups",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "CleanupSchedulerSchedules"
+    effect = "Allow"
+    actions = [
+      "scheduler:DeleteSchedule",
+      "scheduler:GetSchedule",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "CleanupAthenaWorkgroups"
+    effect = "Allow"
+    actions = [
+      "athena:DeleteWorkGroup",
+      "athena:GetWorkGroup",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "CleanupGlueCatalogObjects"
+    effect = "Allow"
+    actions = [
+      "glue:DeleteDatabase",
+      "glue:DeleteTable",
+      "glue:GetTables",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "CleanupKinesisStreams"
+    effect = "Allow"
+    actions = [
+      "kinesis:DeleteStream",
+      "kinesis:DescribeStreamSummary",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "CleanupFirehoseDeliveryStreams"
+    effect = "Allow"
+    actions = [
+      "firehose:DeleteDeliveryStream",
+      "firehose:DescribeDeliveryStream",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
     sid    = "WriteLogs"
     effect = "Allow"
     actions = [
@@ -144,8 +229,11 @@ data "archive_file" "lambda_zip" {
   source {
     content = templatefile("${path.module}/lambda.py.tftpl", {
       accepted_cleanup_tag_names = jsonencode(local.accepted_cleanup_tag_names)
+      accepted_cleanup_ttl_tag_names = jsonencode(local.accepted_cleanup_ttl_tag_names)
       cleanup_schedule_tag_name  = var.cleanup_schedule_tag_name
+      cleanup_ttl_tag_name       = var.cleanup_ttl_tag_name
       cleanup_tag_name           = var.cleanup_tag_name
+      created_at_tag_name        = var.created_at_tag_name
       created_on_tag_name        = var.created_on_tag_name
       monthly_cleanup_day        = var.monthly_cleanup_day
       weekly_cleanup_weekday     = var.weekly_cleanup_weekday
