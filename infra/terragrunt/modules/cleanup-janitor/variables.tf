@@ -17,14 +17,20 @@ variable "log_retention_days" {
   default = 30
 }
 
-variable "cleanup_tag_name" {
+variable "failure_notification_topic_arn" {
   type    = string
-  default = "auto_cleanup"
+  default = ""
 }
 
-variable "accepted_cleanup_tag_names" {
-  type    = list(string)
-  default = ["auto-cleanup", "auto_delete", "auto-delete"]
+variable "cleanup_tag_names" {
+  type        = list(string)
+  description = "Accepted auto-cleanup tag keys. The first entry is the canonical key new stacks should publish."
+  default     = ["auto_cleanup", "auto-cleanup", "auto_delete", "auto-delete"]
+
+  validation {
+    condition     = length(var.cleanup_tag_names) > 0
+    error_message = "cleanup_tag_names must contain at least one tag key."
+  }
 }
 
 variable "cleanup_schedule_tag_name" {
@@ -32,14 +38,15 @@ variable "cleanup_schedule_tag_name" {
   default = "cleanup_schedule"
 }
 
-variable "cleanup_ttl_tag_name" {
-  type    = string
-  default = "cleanup_ttl"
-}
+variable "cleanup_ttl_tag_names" {
+  type        = list(string)
+  description = "Accepted TTL tag keys. The first entry is the canonical key new stacks should publish."
+  default     = ["cleanup_ttl", "cleanup-ttl", "ttl"]
 
-variable "accepted_cleanup_ttl_tag_names" {
-  type    = list(string)
-  default = ["cleanup-ttl", "ttl"]
+  validation {
+    condition     = length(var.cleanup_ttl_tag_names) > 0
+    error_message = "cleanup_ttl_tag_names must contain at least one tag key."
+  }
 }
 
 variable "created_on_tag_name" {

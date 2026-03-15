@@ -5,6 +5,7 @@ Scheduled account automations live here.
 Current stacks:
 - `cleanup-janitor`
   Runs once per day and removes explicitly tagged disposable resources.
+  It can also send failure emails when a cleanup action fails or when the Lambda itself errors.
 
 The janitor is intentionally opt-in. A resource is only eligible for cleanup if it is tagged with:
 - `auto_cleanup = true`
@@ -27,6 +28,12 @@ The janitor accepts a small explicit set of opt-in tag keys:
 - `auto-cleanup`
 - `auto_delete`
 - `auto-delete`
+
+The janitor module now models these as ordered lists:
+- `cleanup_tag_names`
+- `cleanup_ttl_tag_names`
+
+The first entry in each list is the canonical key that new stacks should publish.
 
 Those same tag keys are used to scope the janitor's IAM permissions, so destructive actions are limited to resources that carry one of the accepted opt-in tags with value `true`.
 
@@ -58,3 +65,9 @@ The current janitor acts on these tagged resource types:
 - security groups
 
 This is intentionally broad for disposable sandbox stacks, but it is still opt-in. Untagged resources are ignored.
+
+Optional failure notifications:
+- by default, the `cleanup-janitor` live stack reuses the shared `visibility-alerts` SNS topic
+- the janitor module expects an existing SNS topic ARN rather than creating its own topic
+- the janitor publishes an email when a tagged resource cleanup fails
+- a CloudWatch alarm on Lambda `Errors` publishes to the same topic for full invocation failures

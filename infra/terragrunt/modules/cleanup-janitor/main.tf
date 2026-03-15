@@ -3,8 +3,10 @@ data "aws_partition" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  accepted_cleanup_tag_names = distinct(concat([var.cleanup_tag_name], var.accepted_cleanup_tag_names))
-  accepted_cleanup_ttl_tag_names = distinct(concat([var.cleanup_ttl_tag_name], var.accepted_cleanup_ttl_tag_names))
+  cleanup_tag_names                      = distinct(var.cleanup_tag_names)
+  cleanup_ttl_tag_names                 = distinct(var.cleanup_ttl_tag_names)
+  configured_failure_notification_topic_arn = trimspace(var.failure_notification_topic_arn)
+  failure_notifications_enabled             = local.configured_failure_notification_topic_arn != ""
   ec2_resource_arns = [
     "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*",
     "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:security-group/*",
@@ -49,7 +51,7 @@ data "aws_iam_policy_document" "lambda" {
   }
 
   dynamic "statement" {
-    for_each = local.accepted_cleanup_tag_names
+    for_each = local.cleanup_tag_names
     content {
       sid    = "CleanupEc2Resources${replace(replace(replace(title(statement.value), "_", ""), "-", ""), " ", "")}"
       effect = "Allow"
@@ -69,7 +71,7 @@ data "aws_iam_policy_document" "lambda" {
   }
 
   dynamic "statement" {
-    for_each = local.accepted_cleanup_tag_names
+    for_each = local.cleanup_tag_names
     content {
       sid    = "CleanupEcsTasks${replace(replace(replace(title(statement.value), "_", ""), "-", ""), " ", "")}"
       effect = "Allow"
@@ -209,6 +211,18 @@ data "aws_iam_policy_document" "lambda" {
     ]
     resources = [aws_sqs_queue.dlq.arn]
   }
+
+  dynamic "statement" {
+    for_each = local.failure_notifications_enabled ? [1] : []
+    content {
+      sid    = "PublishFailureNotifications"
+      effect = "Allow"
+      actions = [
+        "sns:Publish",
+      ]
+      resources = [local.configured_failure_notification_topic_arn]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "this" {
@@ -228,13 +242,12 @@ data "archive_file" "lambda_zip" {
 
   source {
     content = templatefile("${path.module}/lambda.py.tftpl", {
-      accepted_cleanup_tag_names = jsonencode(local.accepted_cleanup_tag_names)
-      accepted_cleanup_ttl_tag_names = jsonencode(local.accepted_cleanup_ttl_tag_names)
+      cleanup_tag_names           = jsonencode(local.cleanup_tag_names)
+      cleanup_ttl_tag_names       = jsonencode(local.cleanup_ttl_tag_names)
       cleanup_schedule_tag_name  = var.cleanup_schedule_tag_name
-      cleanup_ttl_tag_name       = var.cleanup_ttl_tag_name
-      cleanup_tag_name           = var.cleanup_tag_name
       created_at_tag_name        = var.created_at_tag_name
       created_on_tag_name        = var.created_on_tag_name
+      failure_notification_topic_arn = local.configured_failure_notification_topic_arn
       monthly_cleanup_day        = var.monthly_cleanup_day
       weekly_cleanup_weekday     = var.weekly_cleanup_weekday
     })
@@ -263,6 +276,12 @@ resource "aws_lambda_function" "this" {
     target_arn = aws_sqs_queue.dlq.arn
   }
 
+  environment {
+    variables = {
+      FAILURE_NOTIFICATION_TOPIC_ARN = local.configured_failure_notification_topic_arn
+    }
+  }
+
   depends_on = [
     aws_cloudwatch_log_group.this,
     aws_iam_role_policy.this,
@@ -287,4 +306,24 @@ resource "aws_lambda_permission" "allow_eventbridge" {
   function_name = aws_lambda_function.this.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.this.arn
+}
+
+resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
+  count = local.failure_notifications_enabled ? 1 : 0
+
+  alarm_name          = "${var.function_name}-errors"
+  alarm_description   = "Notify when the cleanup janitor Lambda reports invocation errors"
+  namespace           = "AWS/Lambda"
+  metric_name         = "Errors"
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 0
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [local.configured_failure_notification_topic_arn]
+
+  dimensions = {
+    FunctionName = aws_lambda_function.this.function_name
+  }
 }

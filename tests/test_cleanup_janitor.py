@@ -30,13 +30,12 @@ class _FakeClientError(Exception):
 def _load_lambda_module():
     source = TEMPLATE_PATH.read_text()
     replacements = {
-        "accepted_cleanup_tag_names": json.dumps(["auto_cleanup", "auto-cleanup"]),
-        "accepted_cleanup_ttl_tag_names": json.dumps(["cleanup_ttl", "cleanup-ttl", "ttl"]),
+        "cleanup_tag_names": json.dumps(["auto_cleanup", "auto-cleanup"]),
+        "cleanup_ttl_tag_names": json.dumps(["cleanup_ttl", "cleanup-ttl", "ttl"]),
         "cleanup_schedule_tag_name": "cleanup_schedule",
-        "cleanup_ttl_tag_name": "cleanup_ttl",
-        "cleanup_tag_name": "auto_cleanup",
         "created_at_tag_name": "created_at",
         "created_on_tag_name": "created_on",
+        "failure_notification_topic_arn": "",
         "monthly_cleanup_day": "1",
         "weekly_cleanup_weekday": "fri",
     }
@@ -127,6 +126,35 @@ class CleanupJanitorTests(unittest.TestCase):
 
         self.assertTrue(should_cleanup)
         self.assertEqual(reason, "weekly_due")
+
+    def test_collect_failed_actions_flattens_failures(self):
+        failures = self.module._collect_failed_actions(
+            {
+                "delete_s3_buckets": {
+                    "deleted": [],
+                    "failed": [{"resource_id": "demo-bucket", "error": "bucket not empty"}],
+                },
+                "terminate_instances": {
+                    "terminated": [],
+                    "failed": "mock ec2 failure",
+                },
+            }
+        )
+
+        self.assertEqual(
+            failures,
+            [
+                {
+                    "action": "delete_s3_buckets",
+                    "resource_id": "demo-bucket",
+                    "error": "bucket not empty",
+                },
+                {
+                    "action": "terminate_instances",
+                    "error": "mock ec2 failure",
+                },
+            ],
+        )
 
 
 if __name__ == "__main__":

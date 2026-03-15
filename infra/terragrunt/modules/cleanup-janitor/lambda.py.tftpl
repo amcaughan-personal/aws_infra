@@ -16,17 +16,17 @@ kinesis = boto3.client("kinesis")
 logs = boto3.client("logs")
 s3 = boto3.client("s3")
 scheduler = boto3.client("scheduler")
+sns = boto3.client("sns")
 tagging = boto3.client("resourcegroupstaggingapi")
 
-AUTO_CLEANUP_TAG = "${cleanup_tag_name}"
-ACCEPTED_AUTO_CLEANUP_TAGS = ${accepted_cleanup_tag_names}
+ACCEPTED_AUTO_CLEANUP_TAGS = ${cleanup_tag_names}
 CLEANUP_SCHEDULE_TAG = "${cleanup_schedule_tag_name}"
-TTL_TAG = "${cleanup_ttl_tag_name}"
-ACCEPTED_TTL_TAGS = ${accepted_cleanup_ttl_tag_names}
+ACCEPTED_TTL_TAGS = ${cleanup_ttl_tag_names}
 CREATED_AT_TAG = "${created_at_tag_name}"
 CREATED_ON_TAG = "${created_on_tag_name}"
 WEEKLY_CLEANUP_WEEKDAY = "${weekly_cleanup_weekday}"
 MONTHLY_CLEANUP_DAY = ${monthly_cleanup_day}
+FAILURE_NOTIFICATION_TOPIC_ARN = "${failure_notification_topic_arn}"
 
 SUPPORTED_RESOURCE_TYPES = (
     "athena:workgroup",
@@ -477,6 +477,42 @@ def _delete_athena_workgroups(workgroup_names):
     return {"deleted": deleted, "failed": failed}
 
 
+def _collect_failed_actions(actions):
+    failures = []
+
+    for action_name, action_result in actions.items():
+        failed = action_result.get("failed")
+        if isinstance(failed, list):
+            for item in failed:
+                failures.append({"action": action_name, **item})
+        elif failed:
+            failures.append({"action": action_name, "error": str(failed)})
+
+    return failures
+
+
+def _publish_failure_notification(results, failures):
+    if not FAILURE_NOTIFICATION_TOPIC_ARN or not failures:
+        return None
+
+    subject = f"cleanup-janitor failed to clean {len(failures)} resource(s)"
+    message = json.dumps(
+        {
+            "date": results["date"],
+            "failure_count": len(failures),
+            "failures": failures,
+            "eligible": results["eligible"],
+        },
+        sort_keys=True,
+        indent=2,
+    )
+    return sns.publish(
+        TopicArn=FAILURE_NOTIFICATION_TOPIC_ARN,
+        Subject=subject[:100],
+        Message=message,
+    )
+
+
 def handler(event, context):
     del event, context
 
@@ -528,6 +564,12 @@ def handler(event, context):
         results["actions"]["terminate_instances"] = {"terminated": [], "failed": str(exc)}
 
     results["actions"]["delete_security_groups"] = _delete_security_groups(eligible["ec2:security-group"])
+
+    failures = _collect_failed_actions(results["actions"])
+    notification = _publish_failure_notification(results, failures)
+    results["failures"] = failures
+    if notification is not None:
+        results["failure_notification"] = {"message_id": notification.get("MessageId")}
 
     print(json.dumps(results, sort_keys=True))
     return results
