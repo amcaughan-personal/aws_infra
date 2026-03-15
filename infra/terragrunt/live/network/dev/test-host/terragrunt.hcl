@@ -23,6 +23,7 @@ inputs = {
   extra_default_tags = {
     auto_cleanup     = "true"
     cleanup_schedule = "daily"
+    # Intentional here: the janitor treats apply time as "last touched" time.
     created_on       = run_cmd("date", "-u", "+%Y-%m-%d")
   }
   instance_type        = "t3.nano"
