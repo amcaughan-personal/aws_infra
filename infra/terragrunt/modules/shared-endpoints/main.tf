@@ -1,9 +1,5 @@
 data "aws_region" "current" {}
 
-resource "time_static" "created_on" {
-  count = var.auto_cleanup_enabled ? 1 : 0
-}
-
 locals {
   interface_endpoint_services = merge(
     var.enable_execute_api ? { execute_api = "execute-api" } : {},
@@ -16,12 +12,6 @@ locals {
     var.enable_sts ? { sts = "sts" } : {},
     var.enable_kinesis_streams ? { kinesis_streams = "kinesis-streams" } : {},
   )
-
-  cleanup_tags = var.auto_cleanup_enabled ? {
-    (var.cleanup_tag_name)          = "true"
-    (var.cleanup_schedule_tag_name) = var.cleanup_schedule
-    (var.created_on_tag_name)       = formatdate("YYYY-MM-DD", time_static.created_on[0].rfc3339)
-  } : {}
 }
 
 resource "aws_security_group" "interface_endpoints" {
@@ -32,7 +22,7 @@ resource "aws_security_group" "interface_endpoints" {
   vpc_id      = var.vpc_id
 
   tags = merge(
-    local.cleanup_tags,
+    var.resource_tags,
     {
       Name = "${var.name_prefix}-interface-endpoints"
     },
@@ -67,7 +57,7 @@ resource "aws_vpc_endpoint" "interface" {
   private_dns_enabled = true
 
   tags = merge(
-    local.cleanup_tags,
+    var.resource_tags,
     {
       Name = "${var.name_prefix}-${replace(each.key, "_", "-")}"
     },
@@ -83,7 +73,7 @@ resource "aws_vpc_endpoint" "s3_gateway" {
   route_table_ids   = var.private_route_table_ids
 
   tags = merge(
-    local.cleanup_tags,
+    var.resource_tags,
     {
       Name = "${var.name_prefix}-s3-gateway"
     },

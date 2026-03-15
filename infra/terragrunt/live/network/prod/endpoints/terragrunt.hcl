@@ -36,7 +36,10 @@ inputs = {
   enable_sts              = true
   enable_kinesis_streams  = true
   enable_s3_gateway       = true
-  auto_cleanup_enabled    = true
-  cleanup_schedule        = "weekly"
+  resource_tags = {
+    auto_cleanup     = "true"
+    cleanup_schedule = "weekly"
+    created_on       = run_cmd("date", "-u", "+%Y-%m-%d")
+  }
   ssm_prefix              = "/network/prod/endpoints"
 }

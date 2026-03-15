@@ -20,10 +20,13 @@ terraform {
 }
 
 inputs = {
-  auto_cleanup_enabled = true
-  cleanup_schedule     = "daily"
   instance_type        = "t3.nano"
   name_prefix          = "dev-network-test-host"
+  resource_tags = {
+    auto_cleanup     = "true"
+    cleanup_schedule = "daily"
+    created_on       = run_cmd("date", "-u", "+%Y-%m-%d")
+  }
   ssm_prefix           = "/network/dev/test-host"
   subnet_id            = dependency.vpc.outputs.private_subnet_ids[0]
   vpc_cidr             = dependency.vpc.outputs.vpc_cidr

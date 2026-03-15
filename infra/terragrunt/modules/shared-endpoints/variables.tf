@@ -77,32 +77,8 @@ variable "publish_ssm_parameters" {
   default = true
 }
 
-variable "auto_cleanup_enabled" {
-  type    = bool
-  default = false
-}
-
-variable "cleanup_schedule" {
-  type    = string
-  default = "daily"
-
-  validation {
-    condition     = contains(["daily", "weekly", "monthly"], var.cleanup_schedule)
-    error_message = "cleanup_schedule must be daily, weekly, or monthly."
-  }
-}
-
-variable "cleanup_tag_name" {
-  type    = string
-  default = "auto_cleanup"
-}
-
-variable "cleanup_schedule_tag_name" {
-  type    = string
-  default = "cleanup_schedule"
-}
-
-variable "created_on_tag_name" {
-  type    = string
-  default = "created_on"
+variable "resource_tags" {
+  type        = map(string)
+  default     = {}
+  description = "Additional tags to apply to the created resources."
 }

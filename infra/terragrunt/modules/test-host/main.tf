@@ -4,18 +4,6 @@ data "aws_ssm_parameter" "al2023_ami" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
 
-resource "time_static" "created_on" {
-  count = var.auto_cleanup_enabled ? 1 : 0
-}
-
-locals {
-  cleanup_tags = var.auto_cleanup_enabled ? {
-    (var.cleanup_tag_name)          = "true"
-    (var.cleanup_schedule_tag_name) = var.cleanup_schedule
-    (var.created_on_tag_name)       = formatdate("YYYY-MM-DD", time_static.created_on[0].rfc3339)
-  } : {}
-}
-
 data "aws_iam_policy_document" "ec2_assume_role" {
   statement {
     effect = "Allow"
@@ -50,7 +38,7 @@ resource "aws_security_group" "host" {
   vpc_id      = var.vpc_id
 
   tags = merge(
-    local.cleanup_tags,
+    var.resource_tags,
     {
       Name = "${var.name_prefix}-host"
     },
@@ -72,7 +60,7 @@ resource "aws_security_group" "session_manager_endpoints" {
   vpc_id      = var.vpc_id
 
   tags = merge(
-    local.cleanup_tags,
+    var.resource_tags,
     {
       Name = "${var.name_prefix}-session-manager-endpoints"
     },
@@ -105,7 +93,7 @@ resource "aws_vpc_endpoint" "ssm" {
   private_dns_enabled = true
 
   tags = merge(
-    local.cleanup_tags,
+    var.resource_tags,
     {
       Name = "${var.name_prefix}-ssm"
     },
@@ -121,7 +109,7 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   private_dns_enabled = true
 
   tags = merge(
-    local.cleanup_tags,
+    var.resource_tags,
     {
       Name = "${var.name_prefix}-ssmmessages"
     },
@@ -137,7 +125,7 @@ resource "aws_vpc_endpoint" "ec2messages" {
   private_dns_enabled = true
 
   tags = merge(
-    local.cleanup_tags,
+    var.resource_tags,
     {
       Name = "${var.name_prefix}-ec2messages"
     },
@@ -166,7 +154,7 @@ resource "aws_instance" "this" {
   }
 
   tags = merge(
-    local.cleanup_tags,
+    var.resource_tags,
     {
       Name = var.name_prefix
     },
