@@ -23,6 +23,7 @@ skip-check:
   - CKV2_AWS_5 # The shared workload SG is exported for later use by other repos and is intentionally unattached here
   - CKV2_AWS_34 # Network identifiers in SSM are configuration values, not secrets that warrant SecureString/KMS overhead
   - CKV_AWS_126 # Detailed EC2 monitoring is unnecessary ongoing cost for the ephemeral SSM test host
+  - CKV_AWS_173 # The janitor Lambda only carries an SNS topic ARN in env vars, and default Lambda env var encryption is enough for this low-sensitivity sandbox path
 
 skip-path:
   # skip just this one file, it kills hostile cryptominers so it's strange and triggers "warnings" I want to ignore
