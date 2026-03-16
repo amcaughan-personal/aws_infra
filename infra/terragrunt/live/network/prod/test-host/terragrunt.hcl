@@ -20,12 +20,17 @@ terraform {
 }
 
 inputs = {
-  auto_cleanup_enabled = true
-  cleanup_schedule     = "daily"
-  instance_type        = "t3.nano"
-  name_prefix          = "prod-network-test-host"
-  ssm_prefix           = "/network/prod/test-host"
-  subnet_id            = dependency.vpc.outputs.private_subnet_ids[0]
-  vpc_cidr             = dependency.vpc.outputs.vpc_cidr
-  vpc_id               = dependency.vpc.outputs.vpc_id
+  extra_default_tags = {
+    # This "prod" stack is a disposable demo twin, not a protected production environment.
+    auto_cleanup     = "true"
+    cleanup_schedule = "daily"
+    # Intentional here: the janitor treats apply time as "last touched" time.
+    created_on = run_cmd("date", "-u", "+%Y-%m-%d")
+  }
+  instance_type = "t3.nano"
+  name_prefix   = "prod-network-test-host"
+  ssm_prefix    = "/network/prod/test-host"
+  subnet_id     = dependency.vpc.outputs.private_subnet_ids[0]
+  vpc_cidr      = dependency.vpc.outputs.vpc_cidr
+  vpc_id        = dependency.vpc.outputs.vpc_id
 }

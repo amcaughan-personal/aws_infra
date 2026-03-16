@@ -11,6 +11,14 @@ inputs = {
   email_param_name = "/infra/alert_email"
 
   publisher_statements = [
+    # CloudWatch metric alarms -> SNS
+    {
+      sid                   = "AllowCloudWatchAlarmsPublish"
+      principal_type        = "Service"
+      principal_identifiers = ["cloudwatch.amazonaws.com"]
+      actions               = ["sns:Publish"]
+    },
+
     # Cost Anomaly Detection -> SNS
     {
       sid                   = "AllowCostExplorerPublish"

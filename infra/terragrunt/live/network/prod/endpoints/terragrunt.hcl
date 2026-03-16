@@ -21,14 +21,27 @@ terraform {
 }
 
 inputs = {
+  extra_default_tags = {
+    # This "prod" stack is a disposable demo twin, not a protected production environment.
+    auto_cleanup     = "true"
+    cleanup_schedule = "weekly"
+    # Intentional here: the janitor treats apply time as "last touched" time.
+    created_on = run_cmd("date", "-u", "+%Y-%m-%d")
+  }
   name_prefix             = "prod-shared"
   vpc_id                  = dependency.vpc.outputs.vpc_id
   vpc_cidr                = dependency.vpc.outputs.vpc_cidr
   private_subnet_ids      = dependency.vpc.outputs.private_subnet_ids
   private_route_table_ids = dependency.vpc.outputs.private_route_table_ids
   enable_execute_api      = true
+  enable_ecr_api          = true
+  enable_ecr_dkr          = true
+  enable_logs             = true
+  enable_ssm              = true
+  enable_athena           = true
+  enable_glue             = true
+  enable_sts              = true
+  enable_kinesis_streams  = true
   enable_s3_gateway       = true
-  auto_cleanup_enabled    = true
-  cleanup_schedule        = "weekly"
   ssm_prefix              = "/network/prod/endpoints"
 }
