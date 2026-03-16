@@ -3,8 +3,8 @@ data "aws_partition" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  cleanup_tag_names                      = distinct(var.cleanup_tag_names)
-  cleanup_ttl_tag_names                 = distinct(var.cleanup_ttl_tag_names)
+  cleanup_tag_names                         = distinct(var.cleanup_tag_names)
+  cleanup_ttl_tag_names                     = distinct(var.cleanup_ttl_tag_names)
   configured_failure_notification_topic_arn = trimspace(var.failure_notification_topic_arn)
   failure_notifications_enabled             = local.configured_failure_notification_topic_arn != ""
   ec2_resource_arns = [
@@ -269,14 +269,14 @@ data "archive_file" "lambda_zip" {
 
   source {
     content = templatefile("${path.module}/lambda.py.tftpl", {
-      cleanup_tag_names           = jsonencode(local.cleanup_tag_names)
-      cleanup_ttl_tag_names       = jsonencode(local.cleanup_ttl_tag_names)
-      cleanup_schedule_tag_name  = var.cleanup_schedule_tag_name
-      created_at_tag_name        = var.created_at_tag_name
-      created_on_tag_name        = var.created_on_tag_name
+      cleanup_tag_names              = jsonencode(local.cleanup_tag_names)
+      cleanup_ttl_tag_names          = jsonencode(local.cleanup_ttl_tag_names)
+      cleanup_schedule_tag_name      = var.cleanup_schedule_tag_name
+      created_at_tag_name            = var.created_at_tag_name
+      created_on_tag_name            = var.created_on_tag_name
       failure_notification_topic_arn = local.configured_failure_notification_topic_arn
-      monthly_cleanup_day        = var.monthly_cleanup_day
-      weekly_cleanup_weekday     = var.weekly_cleanup_weekday
+      monthly_cleanup_day            = var.monthly_cleanup_day
+      weekly_cleanup_weekday         = var.weekly_cleanup_weekday
     })
     filename = "lambda.py"
   }

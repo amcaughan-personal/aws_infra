@@ -25,7 +25,7 @@ inputs = {
     auto_cleanup     = "true"
     cleanup_schedule = "weekly"
     # Intentional here: the janitor treats apply time as "last touched" time.
-    created_on       = run_cmd("date", "-u", "+%Y-%m-%d")
+    created_on = run_cmd("date", "-u", "+%Y-%m-%d")
   }
   name_prefix             = "dev-shared"
   vpc_id                  = dependency.vpc.outputs.vpc_id
@@ -33,15 +33,15 @@ inputs = {
   private_subnet_ids      = dependency.vpc.outputs.private_subnet_ids
   private_route_table_ids = dependency.vpc.outputs.private_route_table_ids
   # Private ECS workloads need more than the API endpoint once ELT jobs live in the VPC.
-  enable_execute_api      = true
-  enable_ecr_api          = true
-  enable_ecr_dkr          = true
-  enable_logs             = true
-  enable_ssm              = true
-  enable_athena           = true
-  enable_glue             = true
-  enable_sts              = true
-  enable_kinesis_streams  = true
-  enable_s3_gateway       = true
-  ssm_prefix              = "/network/dev/endpoints"
+  enable_execute_api     = true
+  enable_ecr_api         = true
+  enable_ecr_dkr         = true
+  enable_logs            = true
+  enable_ssm             = true
+  enable_athena          = true
+  enable_glue            = true
+  enable_sts             = true
+  enable_kinesis_streams = true
+  enable_s3_gateway      = true
+  ssm_prefix             = "/network/dev/endpoints"
 }

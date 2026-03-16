@@ -17,6 +17,6 @@ terraform {
 }
 
 inputs = {
-  function_name                   = "cleanup-janitor"
-  failure_notification_topic_arn  = dependency.visibility_alerts_sns.outputs.topic_arn
+  function_name                  = "cleanup-janitor"
+  failure_notification_topic_arn = dependency.visibility_alerts_sns.outputs.topic_arn
 }
