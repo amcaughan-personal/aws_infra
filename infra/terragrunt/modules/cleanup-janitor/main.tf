@@ -20,6 +20,33 @@ locals {
     "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.function_name}",
     "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.function_name}:*",
   ]
+  cleanup_log_group_resource_arns = [
+    "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:*",
+  ]
+  s3_cleanup_resource_arns = [
+    "arn:${data.aws_partition.current.partition}:s3:::*",
+    "arn:${data.aws_partition.current.partition}:s3:::*/*",
+  ]
+  ecr_repository_resource_arns = [
+    "arn:${data.aws_partition.current.partition}:ecr:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:repository/*",
+  ]
+  scheduler_schedule_resource_arns = [
+    "arn:${data.aws_partition.current.partition}:scheduler:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:schedule/*/*",
+  ]
+  athena_workgroup_resource_arns = [
+    "arn:${data.aws_partition.current.partition}:athena:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:workgroup/*",
+  ]
+  glue_catalog_resource_arns = [
+    "arn:${data.aws_partition.current.partition}:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:catalog",
+    "arn:${data.aws_partition.current.partition}:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:database/*",
+    "arn:${data.aws_partition.current.partition}:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/*/*",
+  ]
+  kinesis_stream_resource_arns = [
+    "arn:${data.aws_partition.current.partition}:kinesis:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:stream/*",
+  ]
+  firehose_delivery_stream_resource_arns = [
+    "arn:${data.aws_partition.current.partition}:firehose:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:deliverystream/*",
+  ]
 }
 
 data "aws_iam_policy_document" "lambda_assume" {
@@ -105,7 +132,7 @@ data "aws_iam_policy_document" "lambda" {
     actions = [
       "ecs:DescribeTasks",
     ]
-    resources = ["*"]
+    resources = local.ecs_task_resource_arns
   }
 
   statement {
@@ -118,7 +145,7 @@ data "aws_iam_policy_document" "lambda" {
       "s3:ListBucket",
       "s3:ListBucketVersions",
     ]
-    resources = ["*"]
+    resources = local.s3_cleanup_resource_arns
   }
 
   statement {
@@ -128,7 +155,7 @@ data "aws_iam_policy_document" "lambda" {
       "ecr:DeleteRepository",
       "ecr:DescribeRepositories",
     ]
-    resources = ["*"]
+    resources = local.ecr_repository_resource_arns
   }
 
   statement {
@@ -138,7 +165,7 @@ data "aws_iam_policy_document" "lambda" {
       "logs:DeleteLogGroup",
       "logs:DescribeLogGroups",
     ]
-    resources = ["*"]
+    resources = local.cleanup_log_group_resource_arns
   }
 
   statement {
@@ -148,7 +175,7 @@ data "aws_iam_policy_document" "lambda" {
       "scheduler:DeleteSchedule",
       "scheduler:GetSchedule",
     ]
-    resources = ["*"]
+    resources = local.scheduler_schedule_resource_arns
   }
 
   statement {
@@ -158,7 +185,7 @@ data "aws_iam_policy_document" "lambda" {
       "athena:DeleteWorkGroup",
       "athena:GetWorkGroup",
     ]
-    resources = ["*"]
+    resources = local.athena_workgroup_resource_arns
   }
 
   statement {
@@ -169,7 +196,7 @@ data "aws_iam_policy_document" "lambda" {
       "glue:DeleteTable",
       "glue:GetTables",
     ]
-    resources = ["*"]
+    resources = local.glue_catalog_resource_arns
   }
 
   statement {
@@ -179,7 +206,7 @@ data "aws_iam_policy_document" "lambda" {
       "kinesis:DeleteStream",
       "kinesis:DescribeStreamSummary",
     ]
-    resources = ["*"]
+    resources = local.kinesis_stream_resource_arns
   }
 
   statement {
@@ -189,7 +216,7 @@ data "aws_iam_policy_document" "lambda" {
       "firehose:DeleteDeliveryStream",
       "firehose:DescribeDeliveryStream",
     ]
-    resources = ["*"]
+    resources = local.firehose_delivery_stream_resource_arns
   }
 
   statement {
