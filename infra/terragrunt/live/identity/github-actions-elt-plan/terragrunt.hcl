@@ -10,7 +10,7 @@ dependency "github_oidc" {
     provider_url = "https://token.actions.githubusercontent.com"
   }
 
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
 terraform {
