@@ -2,6 +2,34 @@ include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
+locals {
+  elt_state_objects = [
+    "live/dev/core/terraform.tfstate",
+    "live/dev/sample-api-polling-01/terraform.tfstate",
+    "live/dev/sample-file-delivery-01/terraform.tfstate",
+    "live/dev/sample-stream-events-01/terraform.tfstate",
+    "live/prod/core/terraform.tfstate",
+    "live/prod/sample-api-polling-01/terraform.tfstate",
+    "live/prod/sample-file-delivery-01/terraform.tfstate",
+    "live/prod/sample-stream-events-01/terraform.tfstate",
+  ]
+
+  elt_state_lock_objects = [
+    for object_key in local.elt_state_objects : "${object_key}.tflock"
+  ]
+
+  elt_state_prefixes = [
+    "live/dev/core/",
+    "live/dev/sample-api-polling-01/",
+    "live/dev/sample-file-delivery-01/",
+    "live/dev/sample-stream-events-01/",
+    "live/prod/core/",
+    "live/prod/sample-api-polling-01/",
+    "live/prod/sample-file-delivery-01/",
+    "live/prod/sample-stream-events-01/",
+  ]
+}
+
 dependency "github_oidc" {
   config_path = "../github-oidc"
 
@@ -54,15 +82,22 @@ inputs = {
           Resource = "arn:aws:s3:::amcaughan-tf-state-us-east-2"
           Condition = {
             StringLike = {
-              "s3:prefix" = [
-                "live/dev/*",
-                "live/prod/*",
-              ]
+              "s3:prefix" = local.elt_state_prefixes
             }
           }
         },
         {
-          Sid    = "ReadWriteEltStateObjects"
+          Sid    = "ReadEltStateObjects"
+          Effect = "Allow"
+          Action = [
+            "s3:GetObject",
+          ]
+          Resource = [
+            for object_key in local.elt_state_objects : "arn:aws:s3:::amcaughan-tf-state-us-east-2/${object_key}"
+          ]
+        },
+        {
+          Sid    = "ManageEltStateLockObjects"
           Effect = "Allow"
           Action = [
             "s3:GetObject",
@@ -70,8 +105,7 @@ inputs = {
             "s3:DeleteObject",
           ]
           Resource = [
-            "arn:aws:s3:::amcaughan-tf-state-us-east-2/live/dev/*",
-            "arn:aws:s3:::amcaughan-tf-state-us-east-2/live/prod/*",
+            for object_key in local.elt_state_lock_objects : "arn:aws:s3:::amcaughan-tf-state-us-east-2/${object_key}"
           ]
         },
       ]
