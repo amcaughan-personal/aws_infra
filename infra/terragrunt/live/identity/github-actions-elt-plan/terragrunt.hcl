@@ -55,8 +55,8 @@ inputs = {
           Condition = {
             StringLike = {
               "s3:prefix" = [
-                "live/dev/*",
-                "live/prod/*",
+                "data-simulator-elt/live/dev/*",
+                "data-simulator-elt/live/prod/*",
               ]
             }
           }
@@ -68,8 +68,8 @@ inputs = {
             "s3:GetObject",
           ]
           Resource = [
-            "arn:aws:s3:::amcaughan-tf-state-us-east-2/live/dev/*",
-            "arn:aws:s3:::amcaughan-tf-state-us-east-2/live/prod/*",
+            "arn:aws:s3:::amcaughan-tf-state-us-east-2/data-simulator-elt/live/dev/*",
+            "arn:aws:s3:::amcaughan-tf-state-us-east-2/data-simulator-elt/live/prod/*",
           ]
         },
         {
@@ -81,8 +81,8 @@ inputs = {
             "s3:DeleteObject",
           ]
           Resource = [
-            "arn:aws:s3:::amcaughan-tf-state-us-east-2/live/dev/*.tflock",
-            "arn:aws:s3:::amcaughan-tf-state-us-east-2/live/prod/*.tflock",
+            "arn:aws:s3:::amcaughan-tf-state-us-east-2/data-simulator-elt/live/dev/*.tflock",
+            "arn:aws:s3:::amcaughan-tf-state-us-east-2/data-simulator-elt/live/prod/*.tflock",
           ]
         },
       ]
