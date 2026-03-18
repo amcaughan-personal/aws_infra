@@ -17,6 +17,6 @@ inputs = {
   # versioned log bucket automatically instead of requiring manual cleanup.
   force_destroy_bucket = true
 
-  enable_sns_notifications = true
+  enable_sns_notifications = false
   sns_topic_name           = "cloudtrail-log-delivery"
 }
