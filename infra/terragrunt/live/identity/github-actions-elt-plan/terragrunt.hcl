@@ -25,8 +25,8 @@ inputs = {
   provider_url      = dependency.github_oidc.outputs.provider_url
 
   allowed_subjects = [
-    "repo:amcaughan/data-simulator-elt:pull_request",
-    "repo:amcaughan/data-simulator-elt:ref:refs/heads/*",
+    "repo:amcaughan-personal/data-simulator-elt:pull_request",
+    "repo:amcaughan-personal/data-simulator-elt:ref:refs/heads/*",
   ]
 
   managed_policy_arns = [
