@@ -26,12 +26,12 @@ variable "force_destroy_bucket" {
   default = false
 }
 
-variable "enable_sns_notifications" {
+variable "enable_delivery_notifications" {
   type    = bool
   default = true
 }
 
-variable "sns_topic_name" {
+variable "delivery_notification_topic_name" {
   type    = string
   default = "cloudtrail-log-delivery"
 }

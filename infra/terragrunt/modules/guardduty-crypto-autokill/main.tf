@@ -39,10 +39,10 @@ resource "aws_iam_role" "lambda" {
 
 locals {
   # CloudWatch log group ARN pattern for this function
-  lambda_log_group_arn = "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.function_name}:*"
+  lambda_log_group_arn = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.function_name}:*"
 
   # EC2 instance ARN pattern, scoped to this account+region
-  instance_arn_pattern = "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*"
+  instance_arn_pattern = "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:instance/*"
 }
 
 data "aws_iam_policy_document" "lambda_policy" {

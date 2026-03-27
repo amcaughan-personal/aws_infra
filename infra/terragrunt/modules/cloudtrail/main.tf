@@ -1,7 +1,7 @@
 locals {
   computed_bucket_name = coalesce(
     var.bucket_name,
-    "${var.bucket_prefix}-${data.aws_caller_identity.current.account_id}-${data.aws_region.current.region}"
+    "${var.bucket_prefix}-${data.aws_caller_identity.current.account_id}-${data.aws_region.current.name}"
   )
 }
 
@@ -68,7 +68,7 @@ data "aws_iam_policy_document" "cloudtrail_bucket" {
       test     = "ArnLike"
       variable = "aws:SourceArn"
       values = [
-        "arn:aws:cloudtrail:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:trail/${var.trail_name}"
+        "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${var.trail_name}"
       ]
     }
   }
@@ -119,13 +119,13 @@ resource "aws_iam_role_policy" "cloudtrail_to_cw" {
 # Actionable security alerts are handled via CloudWatch Logs metric alarms,
 # not CloudTrail delivery notifications.
 resource "aws_sns_topic" "this" {
-  count             = var.enable_sns_notifications ? 1 : 0
-  name              = var.sns_topic_name
+  count             = var.enable_delivery_notifications ? 1 : 0
+  name              = var.delivery_notification_topic_name
   kms_master_key_id = "alias/aws/sns"
 }
 
 data "aws_iam_policy_document" "cloudtrail_sns" {
-  count = var.enable_sns_notifications ? 1 : 0
+  count = var.enable_delivery_notifications ? 1 : 0
 
   statement {
     sid    = "AWSCloudTrailPublish"
@@ -149,14 +149,14 @@ data "aws_iam_policy_document" "cloudtrail_sns" {
       test     = "ArnLike"
       variable = "aws:SourceArn"
       values = [
-        "arn:aws:cloudtrail:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:trail/${var.trail_name}"
+        "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${var.trail_name}"
       ]
     }
   }
 }
 
 resource "aws_sns_topic_policy" "this" {
-  count  = var.enable_sns_notifications ? 1 : 0
+  count  = var.enable_delivery_notifications ? 1 : 0
   arn    = aws_sns_topic.this[0].arn
   policy = data.aws_iam_policy_document.cloudtrail_sns[0].json
 }
@@ -169,7 +169,7 @@ resource "aws_cloudtrail" "this" {
   enable_log_file_validation    = true
   is_organization_trail         = false
 
-  sns_topic_name = var.enable_sns_notifications ? aws_sns_topic.this[0].name : null
+  sns_topic_name = var.enable_delivery_notifications ? aws_sns_topic.this[0].name : null
 
   cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.this.arn}:*"
   cloud_watch_logs_role_arn  = aws_iam_role.cloudtrail_to_cw.arn

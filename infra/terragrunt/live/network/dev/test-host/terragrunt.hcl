@@ -12,7 +12,7 @@ dependency "vpc" {
     shared_workload_security_group_id = "sg-00000000000000000"
   }
 
-  mock_outputs_allowed_terraform_commands = ["init", "plan", "validate"]
+  mock_outputs_allowed_terraform_commands = ["init", "plan", "validate", "destroy"]
 }
 
 terraform {

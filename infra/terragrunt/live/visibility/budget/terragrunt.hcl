@@ -9,7 +9,7 @@ dependency "visibility_alerts_sns" {
     topic_arn = "arn:aws:sns:us-east-2:000000000000:visibility-alerts"
   }
 
-  mock_outputs_allowed_terraform_commands = ["init", "plan", "validate"]
+  mock_outputs_allowed_terraform_commands = ["init", "plan", "validate", "destroy"]
 }
 
 terraform {
